@@ -1,0 +1,664 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "swagger": "2.0",
+    "paths": {},
+    "definitions": {
+        "BLEAddress": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "BLEConnectionConnParams": {
+            "type": "object",
+            "properties": {
+                "minConnInterval": {
+                    "type": "number"
+                },
+                "maxConnInterval": {
+                    "type": "number"
+                },
+                "slaveLatency": {
+                    "type": "integer"
+                },
+                "connectionSupervisionTimeout": {
+                    "type": "integer"
+                }
+            }
+        },
+        "BLEConnectionScanParams": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "interval": {
+                    "type": "integer"
+                },
+                "window": {
+                    "type": "integer"
+                },
+                "timeout": {
+                    "type": "integer"
+                }
+            }
+        },
+        "BLEConnectionSecurityParams": {
+            "type": "object",
+            "properties": {
+                "bond": {
+                    "type": "boolean"
+                },
+                "mitm": {
+                    "type": "boolean"
+                },
+                "lesc": {
+                    "type": "boolean"
+                },
+                "keypress": {
+                    "type": "boolean"
+                },
+                "ioCaps": {
+                    "type": "string"
+                },
+                "minKeySize": {
+                    "type": "number"
+                },
+                "maxKeySize": {
+                    "type": "number"
+                },
+                "oob": {
+                    "type": "boolean"
+                },
+                "kdistOwn": {
+                    "$ref": "#/definitions/BLEConnectionSecurityKeyDistributionConfig"
+                },
+                "kdistPeer": {
+                    "$ref": "#/definitions/BLEConnectionSecurityKeyDistributionConfig"
+                }
+            }
+        },
+        "BLEConnectionSecurity": {
+            "type": "object",
+            "properties": {
+                "initiate": {
+                    "type": "boolean"
+                },
+                "autoAccept": {
+                    "type": "boolean"
+                },
+                "securityParams": {
+                    "$ref": "#/definitions/BLEConnectionSecurityParams"
+                }
+            }
+        },
+        "BLEConnectionOptions": {
+            "type": "object",
+            "properties": {
+                "scanParams": {
+                    "$ref": "#/definitions/BLEConnectionScanParams"
+                },
+                "connParams": {
+                    "$ref": "#/definitions/BLEConnectionConnParams"
+                },
+                "security": {
+                    "$ref": "#/definitions/BLEConnectionSecurity"
+                }
+            }
+        },
+        "BLEDevice": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "rssi": {
+                    "type": "integer"
+                },
+                "time": {
+                    "type": "string"
+                },
+                "advertisementType": {
+                    "type": "string"
+                },
+                "deviceType": {
+                    "type": "string"
+                },
+                "address": {
+                    "$ref": "#/definitions/BLEAddress"
+                },
+                "serviceUUIDs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "BLEService": {
+            "type": "object",
+            "properties": {
+                "uuid": {
+                    "type": "string"
+                },
+                "characteristics": {
+                    "$ref": "#/definitions/BLECharacteristics"
+                }
+            }
+        },
+        "BLEServices": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/BLEService"
+            }
+        },
+        "BLECharacteristic": {
+            "type": "object",
+            "properties": {
+                "uuid": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "properties": {
+                    "$ref": "#/definitions/BLECharacteristicProperties"
+                },
+                "descriptors": {
+                    "$ref": "#/definitions/BLEDescriptors"
+                }
+            }
+        },
+        "BLECharacteristics": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/BLECharacteristic"
+            }
+        },
+        "BLECharacteristicProperties": {
+            "type": "object",
+            "properties": {
+                "read": {
+                    "type": "boolean"
+                },
+                "writeWithoutResponse": {
+                    "type": "boolean"
+                },
+                "write": {
+                    "type": "boolean"
+                },
+                "notify": {
+                    "type": "boolean"
+                },
+                "indicate": {
+                    "type": "boolean"
+                },
+                "authorizedSignedWrite": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "BLEDescriptor": {
+            "type": "object",
+            "properties": {
+                "uuid": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "BLEDescriptors": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/BLEDescriptor"
+            }
+        },
+        "BLEDeviceConnectionDatabaseEntry": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "address": {
+                    "$ref": "#/definitions/BLEAddress"
+                },
+                "connectOptions": {
+                    "$ref": "#/definitions/BLEConnectionOptions"
+                },
+                "status": {
+                    "$ref": "#/definitions/BLEDeviceConnectionStatus"
+                },
+                "deviceName": {
+                    "type": "string"
+                },
+                "statistics": {
+                    "$ref": "#/definitions/BLEDeviceConnectionStatistics"
+                }
+            }
+        },
+        "BLEDeviceConnectionStatus": {
+            "type": "object",
+            "properties": {
+                "connected": {
+                    "type": "boolean"
+                },
+                "connecting": {
+                    "type": "boolean"
+                },
+                "connectTimedOut": {
+                    "type": "boolean"
+                },
+                "error": {
+                    "$ref": "#/definitions/BLEDeviceConnectionError"
+                },
+                "auth": {
+                    "$ref": "#/definitions/BLEDeviceAuthStatus"
+                }
+            }
+        },
+        "BLEDeviceConnectionError": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "integer"
+                }
+            }
+        },
+        "BLEDeviceAuthStatus": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "statusCode": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "bonded": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "BLEDeviceConnectionStatistics": {
+            "type": "object",
+            "properties": {
+                "addedAt": {
+                    "type": "string"
+                },
+                "lastConnect": {
+                    "type": "string"
+                },
+                "lastDisconnect": {
+                    "type": "string"
+                },
+                "connectCount": {
+                    "type": "integer"
+                },
+                "disconnectCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "G2CMessage": {
+            "type": "object",
+            "properties": {
+                "requestId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "gatewayId": {
+                    "type": "string"
+                }
+            }
+        },
+        "Event": {
+            "type": "object",
+            "properties": {
+                "timestamp": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "subType": {
+                    "type": "string"
+                }
+            }
+        },
+        "G2CEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/G2CMessage"
+                },
+                {
+                    "properties": {
+                        "event": {
+                            "$ref": "#/definitions/Event"
+                        }
+                    }
+                }
+            ]
+        },
+        "GatewayInfo": {
+            "type": "object",
+            "properties": {
+                "platform": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uptime": {
+                    "type": "number"
+                },
+                "connects": {
+                    "type": "integer"
+                },
+                "disconnects": {
+                    "type": "integer"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "connected": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "GatewayStatusEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "connections": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                            }
+                        },
+                        "gatewayInfo": {
+                            "$ref": "#/definitions/GatewayInfo"
+                        }
+                    }
+                }
+            ]
+        },
+        "DeviceConnectResultEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        }
+                    }
+                }
+            ]
+        },
+        "ScanResultInstantEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "devices": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/BLEDevice"
+                            }
+                        },
+                        "timeout": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            ]
+        },
+        "ScanResultBatchEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "devices": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/BLEDevice"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "DeviceDisconnectedEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        }
+                    }
+                }
+            ]
+        },
+        "DeviceDiscoverEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        },
+                        "services": {
+                            "$ref": "#/definitions/BLEServices"
+                        }
+                    }
+                }
+            ]
+        },
+        "CharacteristicValueChangedEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        },
+                        "characteristic": {
+                            "$ref": "#/definitions/BLECharacteristic"
+                        }
+                    }
+                }
+            ]
+        },
+        "CharacteristicValueReadEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        },
+                        "characteristic": {
+                            "$ref": "#/definitions/BLECharacteristic"
+                        }
+                    }
+                }
+            ]
+        },
+        "DeviceConnectionNeedPasskeyEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        },
+                        "keyType": {
+                            "type": "string"
+                        }
+                    }
+                }
+            ]
+        },
+        "BLEDeviceConnectionPasskey": {
+            "type": "object",
+            "properties": {
+                "keyType": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                }
+            }
+        },
+        "BLEConnectionSecurityKeyDistributionConfig": {
+            "type": "object",
+            "properties": {
+                "enc": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "boolean"
+                },
+                "sign": {
+                    "type": "boolean"
+                },
+                "link": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "CharacteristicValueWriteEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        },
+                        "characteristic": {
+                            "$ref": "#/definitions/BLECharacteristic"
+                        }
+                    }
+                }
+            ]
+        },
+        "DescriptorValueChangedEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        },
+                        "descriptor": {
+                            "$ref": "#/definitions/BLEDescriptor"
+                        }
+                    }
+                }
+            ]
+        },
+        "DescriptorValueReadEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        },
+                        "descriptor": {
+                            "$ref": "#/definitions/BLEDescriptor"
+                        }
+                    }
+                }
+            ]
+        },
+        "DescriptorValueWriteEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        },
+                        "descriptor": {
+                            "$ref": "#/definitions/BLEDescriptor"
+                        }
+                    }
+                }
+            ]
+        },
+        "AuthStatusEvent": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/Event"
+                },
+                {
+                    "properties": {
+                        "device": {
+                            "$ref": "#/definitions/BLEDeviceConnectionDatabaseEntry"
+                        },
+                        "status": {
+                            "$ref": "#/definitions/BLEDeviceAuthStatus"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

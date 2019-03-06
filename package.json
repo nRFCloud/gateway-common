@@ -1,0 +1,57 @@
+{
+  "name": "nrfcloud-gateway-common",
+  "version": "2.0.6",
+  "description": "",
+  "main": "dist/cjs/src/index.js",
+  "module": "dist/es6/src/index.js",
+  "typings": "dist/cjs/src/index.d.ts",
+  "author": "",
+  "license": "ISC",
+  "scripts": {
+    "precompile": "npm run clean",
+    "clean": "rimraf dist/*",
+    "build": "npm run lint && npm run compile",
+    "compile": "npm run compile:ts && npm run compile:es6",
+    "compile:ts": "tsc",
+    "compile:es6": "tsc -p tsconfig.es6.json",
+    "lint": "tslint --project ./tsconfig.json",
+    "postinstall": "postinstall-build dist \"npm run compile\"",
+    "jsc2ts": "java -jar tools/swagger-codegen-cli.jar generate -i schema/g2c.schema.json -l typescript-node -o src/model && patch -p0 < ./tools/postprocess.patch",
+    "test": "env-cmd ./test/.env jest --runInBand",
+    "test:watch": "env-cmd ./test/.env jest --watch --runInBand"
+  },
+  "dependencies": {
+    "async-lock": "^1.0.0",
+    "aws-iot-device-sdk": "^2.1.0",
+    "postinstall-build": "^2.1.3",
+    "winston": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/aws-iot-device-sdk": "^2.1.0",
+    "@types/expect": "^1.20.2",
+    "@types/jest": "^21.1.7",
+    "@types/node": "^8.0.53",
+    "@types/winston": "^2.3.7",
+    "commander": "^2.11.0",
+    "core-js": "^2.5.5",
+    "env-cmd": "^7.0.0",
+    "expect": "^21.2.1",
+    "jest": "^21.2.1",
+    "rimraf": "^2.6.2",
+    "ts-jest": "^21.2.3",
+    "tslint": "^5.7.0",
+    "typescript": "2.3.4"
+  },
+  "jest": {
+    "transform": {
+      ".(ts|tsx)": "./node_modules/ts-jest/preprocessor.js"
+    },
+    "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(ts)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "json"
+    ]
+  }
+}
