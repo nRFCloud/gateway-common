@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "declaration": true,
+        "esModuleInterop": true,
+        "lib": ["es2015"],
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "newLine": "LF",
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "strict": true,
+        "strictNullChecks": false
+    },
+    "files": ["src/index.ts"]
+}

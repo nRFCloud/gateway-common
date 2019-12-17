@@ -1,8 +1,0 @@
-{
-    "extends": "./tsconfig.json",
-    "compilerOptions": {
-        "declarationDir": "./dist/es6",
-        "outDir": "./dist/es6",
-        "module": "es2015"
-    }
-}
