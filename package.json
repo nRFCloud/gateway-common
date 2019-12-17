@@ -1,6 +1,6 @@
 {
   "name": "@nrfcloud/gateway-common",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "nRF Cloud Javascript gateway common library",
   "main": "dist/index.js",
   "module": "es6/index.js",

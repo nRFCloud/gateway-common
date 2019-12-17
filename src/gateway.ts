@@ -24,7 +24,7 @@ const CLIENT_CHARACTERISTIC_CONFIGURATION = '2902';
 
 export enum GatewayEvent {
     NameChanged = 'NAME_CHANGED',
-    Deleted = 'GATEWAY_DELTED',
+    Deleted = 'GATEWAY_DELETED',
     DeviceRemoved = 'DEVICE_REMOVED',
     ConnectionsChanged = 'CONNECTIONS_CHANGED',
 }
