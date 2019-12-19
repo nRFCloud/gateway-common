@@ -18,7 +18,7 @@ import {
     ScanType,
 } from './interfaces/c2g';
 import { assumeType } from './utils';
-import { DeviceScanResult } from './interfaces/scanResult';
+import { ScanResult } from './interfaces/scanResult';
 
 const CLIENT_CHARACTERISTIC_CONFIGURATION = '2902';
 
@@ -296,7 +296,7 @@ export class Gateway extends EventEmitter {
                         address: deviceId,
                         type: '',
                     },
-                } as unknown as DeviceScanResult, false);
+                }, false);
             } catch (err) {
                 //squelch. If there was an error, we don't care since this is not a critical piece of information
             }
@@ -406,7 +406,7 @@ export class Gateway extends EventEmitter {
     }
 
     //Filter out results that don't match the sent operation
-    private shouldIncludeResult(op: ScanOperation, result: DeviceScanResult): boolean {
+    private shouldIncludeResult(op: ScanOperation, result: ScanResult): boolean {
         if (op.scanType === ScanType.Beacon && !isBeacon(result.advertisementData)) {
             return false;
         }

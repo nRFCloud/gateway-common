@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 
-import { DeviceScanResult } from './interfaces/scanResult';
+import { ScanResult } from './interfaces/scanResult';
 import { Characteristic, Descriptor, Service, Services } from './interfaces/bluetooth';
 
 export enum AdapterEvent {
@@ -15,7 +15,7 @@ export abstract class BluetoothAdapter extends EventEmitter {
 	 * @param resultCallback Called when the scan finds a device
 	 */
 	abstract startScan(
-		resultCallback: (deviceScanResult: DeviceScanResult) => void,
+		resultCallback: (deviceScanResult: ScanResult) => void,
 	);
 
 	/**

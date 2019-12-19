@@ -3,7 +3,7 @@ export interface Address {
 	type: string;
 }
 
-export class Device {
+export interface Device {
 	address: Address;
 	role: string;
 	connected: boolean;

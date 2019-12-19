@@ -1,5 +1,5 @@
 import * as awsIot from 'aws-iot-device-sdk';
-import { DeviceScanResult } from './interfaces/scanResult';
+import { ScanResult } from './interfaces/scanResult';
 import { BLEDevice, Characteristic, Descriptor, Services } from './interfaces/bluetooth';
 import {
 	CharacteristicEvent,
@@ -29,7 +29,7 @@ export class MqttFacade {
 		return `$aws/things/${this.gatewayId}/shadow`;
 	}
 
-	handleScanResult(result: DeviceScanResult, timeout: boolean = false) {
+	handleScanResult(result: ScanResult, timeout: boolean = false) {
 		const event = {
 			type: EventType.ScanResult,
 			subType: 'instant',

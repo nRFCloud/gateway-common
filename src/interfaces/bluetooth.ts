@@ -12,7 +12,7 @@ export class Descriptor {
 	}
 }
 
-export class CharacteristicProperties {
+export interface CharacteristicProperties {
 	broadcast: boolean;
 	read: boolean;
 	writeWithoutResponse: boolean;
