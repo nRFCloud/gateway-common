@@ -10,5 +10,6 @@ export interface ScanResult {
 	deviceType?: 'BLE';
 	address?: Address;
 	serviceUUIDs?: string[];
-	advertisementData?: AdvertisementPacket;
+    //The advertisement data can be either a parsed packet (See beacon-utilities) or the raw byte array. The front end will handle both equally well
+	advertisementData?: AdvertisementPacket | number[];
 }

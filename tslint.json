@@ -7,7 +7,7 @@
         "curly": true,
         "indent": [
             true,
-            "spaces"
+            "tabs"
         ],
         "no-duplicate-variable": true,
         "no-eval": true,

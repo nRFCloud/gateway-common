@@ -11,7 +11,7 @@ export enum AdapterEvent {
 export abstract class BluetoothAdapter extends EventEmitter {
 
 	/**
-	 * Start scanning for devices. Scan results need to be converted to match DeviceScanResult
+	 * Start scanning for devices. Scan results need to be converted to match ScanResult
 	 * @param resultCallback Called when the scan finds a device
 	 */
 	abstract startScan(
