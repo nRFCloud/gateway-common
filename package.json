@@ -10,7 +10,10 @@
     "clean": "del-cli dist/*",
     "build": "npm run clean && tsc -p tsconfig.es5.json && tsc -p tsconfig.es6.json"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@babel/runtime": "^7.9.2",
+    "core-js": "^3.6.5"
+  },
   "devDependencies": {
     "@types/aws-iot-device-sdk": "^2.2.0",
     "aws-iot-device-sdk": "^2.2.1",
@@ -23,6 +26,6 @@
   },
   "files": [
     "dist/*",
-    "es5/*"
+    "es6/*"
   ]
 }

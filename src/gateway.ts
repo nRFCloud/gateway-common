@@ -27,6 +27,7 @@ export enum GatewayEvent {
     Deleted = 'GATEWAY_DELETED',
     DeviceRemoved = 'DEVICE_REMOVED',
     ConnectionsChanged = 'CONNECTIONS_CHANGED',
+    StatusChanged = 'STATUS_CHANGED',
 }
 
 /*
@@ -52,9 +53,14 @@ export type GatewayConfiguration = {
     watchDuration?: number; //How long to look for beacons, defaults to 2 seconds
 }
 
-interface GatewayState {
+export interface GatewayState {
     scanning: boolean;
     isTryingConnection: boolean;
+    connected: boolean;
+}
+
+export interface DeviceConnections {
+    [deviceId: string]: boolean
 }
 
 export class Gateway extends EventEmitter {
@@ -67,9 +73,10 @@ export class Gateway extends EventEmitter {
     readonly watchInterval: number;
     readonly watchDuration: number;
 
-    private deviceConnections: {[deviceId: string]: boolean} = {};
+    private deviceConnections: DeviceConnections = {};
     private deviceConnectionIntervalHolder = null;
     private lastTriedAddress: string = null;
+    private _name: string = '';
 
     private discoveryCache: {[key: string]: Services} = {};
 
@@ -84,6 +91,18 @@ export class Gateway extends EventEmitter {
 
     get g2cTopic(): string {
         return `${this.stage}/${this.tenantId}/gateways/${this.gatewayId}/g2c`;
+    }
+
+    get beacons(): string[] {
+        return this.watchList;
+    }
+
+    get connections(): DeviceConnections {
+        return this.deviceConnections;
+    }
+
+    get name(): string {
+        return this._name;
     }
 
     private get shadowGetTopic(): string {
@@ -110,6 +129,7 @@ export class Gateway extends EventEmitter {
         this.state = {
             isTryingConnection: false,
             scanning: false,
+            connected: false,
         };
 
         this.bluetoothAdapter.on(AdapterEvent.DeviceConnected, (deviceId) => {
@@ -142,6 +162,7 @@ export class Gateway extends EventEmitter {
             console.log('connect');
             //To finish the connection, an empty string must be published to the shadowGet topic
             this.gatewayDevice.publish(this.shadowGetTopic, '');
+            this.updateState({connected: true});
         });
 
         this.gatewayDevice.on('message', (topic, payload) => {
@@ -149,6 +170,10 @@ export class Gateway extends EventEmitter {
         });
 
         this.gatewayDevice.on('error', this.handleError);
+
+        this.gatewayDevice.on('close', () => {
+            this.updateState({connected: false});
+        });
 
         /*
         The gateway needs to listen to three topics:
@@ -314,8 +339,7 @@ export class Gateway extends EventEmitter {
         if (this.state.scanning) {
             return;
         }
-
-        this.state.scanning = true;
+        this.updateState({scanning: true});
         //The way to track beacons is to just scan for them
         return new Promise<void>((resolve) => {
             this.bluetoothAdapter.startScan((result) => {
@@ -325,7 +349,7 @@ export class Gateway extends EventEmitter {
             });
             setTimeout(() => {
                 this.bluetoothAdapter.stopScan();
-                this.state.scanning = false;
+                this.updateState({scanning: false});
                 resolve();
             }, this.watchDuration * 1000);
         });
@@ -431,7 +455,7 @@ export class Gateway extends EventEmitter {
         if (this.state.scanning) {
             return;
         }
-        this.state.scanning = true;
+        this.updateState({scanning: true});
         this.bluetoothAdapter.startScan(
             (result) => {
                 if (this.shouldIncludeResult(op, result)) {
@@ -442,7 +466,7 @@ export class Gateway extends EventEmitter {
         setTimeout(() => {
             this.bluetoothAdapter.stopScan();
             this.mqttFacade.handleScanResult(null, true);
-            this.state.scanning = false;
+            this.updateState({scanning: false});
         }, op.scanTimeout * 1000);
     }
 
@@ -535,12 +559,12 @@ export class Gateway extends EventEmitter {
         }
 
         try {
-            this.state.isTryingConnection = true;
+            this.updateState({isTryingConnection: true});
             await this.bluetoothAdapter.connect(nextAddressToTry);
         } catch (error) {
         } finally {
             this.lastTriedAddress = nextAddressToTry;
-            this.state.isTryingConnection = false;
+            this.updateState({isTryingConnection: false});
         }
     }
 
@@ -558,5 +582,10 @@ export class Gateway extends EventEmitter {
     private reportConnectionDown(deviceId: string) {
         this.reportConnections();
         this.mqttFacade.reportConnectionDown(deviceId);
+    }
+
+    private updateState(newState: Partial<GatewayState>) {
+        this.state = Object.assign({}, this.state, newState);
+        this.emit(GatewayEvent.StatusChanged, this.state);
     }
 }
