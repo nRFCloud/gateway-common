@@ -51,20 +51,20 @@ export class MqttFacade {
 	}
 
 	reportConnectionUp(deviceId: string) {
-		const event: DeviceConnectedEvent = {
-			type: EventType.DeviceConnected,
-			device: this.buildDeviceObjectForEvent(deviceId, true),
-		};
-		this.publishG2CEvent(event);
+        this.reportConnectionStatus(deviceId, EventType.DeviceConnected);
 	}
 
 	reportConnectionDown(deviceId: string) {
-		const event: DeviceDisconnectedEvent = {
-			type: EventType.DeviceDisconnected,
-			device: this.buildDeviceObjectForEvent(deviceId, false),
-		};
-		this.publishG2CEvent(event);
+		this.reportConnectionStatus(deviceId, EventType.DeviceDisconnected);
 	}
+
+	private reportConnectionStatus(deviceId: string, type: EventType.DeviceConnected | EventType.DeviceDisconnected) {
+        const event: DeviceConnectedEvent | DeviceDisconnectedEvent = {
+            type,
+            device: this.buildDeviceObjectForEvent(deviceId, false),
+        };
+        this.publishG2CEvent(event);
+    }
 
 	reportDiscover(deviceId: string, services: Services) {
 		const discoverEvent: DeviceDiscoverEvent = {
