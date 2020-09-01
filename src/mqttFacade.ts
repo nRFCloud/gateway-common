@@ -51,7 +51,7 @@ export class MqttFacade {
 	}
 
 	reportConnectionUp(deviceId: string) {
-        this.reportConnectionStatus(deviceId, EventType.DeviceConnected);
+		this.reportConnectionStatus(deviceId, EventType.DeviceConnected);
 	}
 
 	reportConnectionDown(deviceId: string) {
@@ -59,12 +59,12 @@ export class MqttFacade {
 	}
 
 	private reportConnectionStatus(deviceId: string, type: EventType.DeviceConnected | EventType.DeviceDisconnected) {
-        const event: DeviceConnectedEvent | DeviceDisconnectedEvent = {
-            type,
-            device: this.buildDeviceObjectForEvent(deviceId, false),
-        };
-        this.publishG2CEvent(event);
-    }
+		const event: DeviceConnectedEvent | DeviceDisconnectedEvent = {
+			type,
+			device: this.buildDeviceObjectForEvent(deviceId, false),
+		};
+		this.publishG2CEvent(event);
+	}
 
 	reportDiscover(deviceId: string, services: Services) {
 		const discoverEvent: DeviceDiscoverEvent = {
