@@ -1,27 +1,16 @@
 {
-    "version": "2.3.4",
-    "compileOnSave": true,
     "compilerOptions": {
+        "declaration": true,
+        "esModuleInterop": true,
+        "lib": ["es2015"],
         "module": "commonjs",
         "moduleResolution": "node",
-        "declaration": true,
-        "target": "es2015",
+        "newLine": "LF",
         "noImplicitAny": false,
         "sourceMap": true,
-        "emitDecoratorMetadata": false,
-        "outDir": "dist/cjs",
-        "noUnusedParameters": true,
-        "noUnusedLocals": true,
-        "types": [
-            "node"
-        ]
+        "strict": true,
+        "strictNullChecks": false,
+        "target": "es5"
     },
-    "include": [
-        "src/**/*",
-        "test/**/*",
-        "examples/*"
-    ],
-    "files": [
-        "src/index.ts"
-    ]
+    "files": ["src/index.ts"]
 }
