@@ -4,10 +4,9 @@ import { Characteristic, Descriptor, Services } from './interfaces/bluetooth';
 export declare class MqttFacade {
     private readonly mqttClient;
     private readonly g2cTopic;
-    private readonly gatewayId;
+    private readonly shadowTopic;
     private messageId;
-    constructor(mqttClient: awsIot.device, g2cTopic: string, gatewayId: string);
-    private get shadowTopic();
+    constructor(mqttClient: awsIot.device, g2cTopic: string, shadowTopic: string);
     handleScanResult(result: ScanResult, timeout?: boolean): void;
     reportConnections(statusConnections: any): void;
     reportConnectionUp(deviceId: string): void;

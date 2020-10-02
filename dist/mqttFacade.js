@@ -3,19 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MqttFacade = void 0;
 var g2c_1 = require("./interfaces/g2c");
 var MqttFacade = /** @class */ (function () {
-    function MqttFacade(mqttClient, g2cTopic, gatewayId) {
+    function MqttFacade(mqttClient, g2cTopic, shadowTopic) {
         this.messageId = 0;
         this.g2cTopic = g2cTopic;
         this.mqttClient = mqttClient;
-        this.gatewayId = gatewayId;
+        this.shadowTopic = shadowTopic;
     }
-    Object.defineProperty(MqttFacade.prototype, "shadowTopic", {
-        get: function () {
-            return "$aws/things/" + this.gatewayId + "/shadow";
-        },
-        enumerable: false,
-        configurable: true
-    });
     MqttFacade.prototype.handleScanResult = function (result, timeout) {
         if (timeout === void 0) { timeout = false; }
         var event = {

@@ -114,7 +114,7 @@ export class Gateway extends EventEmitter {
 	}
 
 	private get shadowTopic(): string {
-		return `$aws/things/${this.gatewayId}/shadow`;
+		return `${this.stage}/${this.tenantId}/${this.gatewayId}/shadow`;
 	}
 
 	constructor(config: GatewayConfiguration) {
@@ -185,7 +185,7 @@ export class Gateway extends EventEmitter {
 		this.gatewayDevice.subscribe(`${this.shadowGetTopic}/accepted`);
 		this.gatewayDevice.subscribe(this.shadowUpdateTopic);
 
-		this.mqttFacade = new MqttFacade(this.gatewayDevice, this.g2cTopic, this.gatewayId);
+		this.mqttFacade = new MqttFacade(this.gatewayDevice, this.g2cTopic, this.shadowTopic);
 
 		this.watcherHolder = setInterval(async () => {
 			await this.performWatches();

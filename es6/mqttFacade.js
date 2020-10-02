@@ -1,13 +1,10 @@
 import { EventType, } from './interfaces/g2c';
 export class MqttFacade {
-    constructor(mqttClient, g2cTopic, gatewayId) {
+    constructor(mqttClient, g2cTopic, shadowTopic) {
         this.messageId = 0;
         this.g2cTopic = g2cTopic;
         this.mqttClient = mqttClient;
-        this.gatewayId = gatewayId;
-    }
-    get shadowTopic() {
-        return `$aws/things/${this.gatewayId}/shadow`;
+        this.shadowTopic = shadowTopic;
     }
     handleScanResult(result, timeout = false) {
         const event = {

@@ -1,31 +1,31 @@
 {
-  "name": "@nrfcloud/gateway-common",
-  "version": "3.1.0",
-  "description": "nRF Cloud Javascript gateway common library",
-  "main": "dist/index.js",
-  "module": "es6/index.js",
-  "author": "Nathan Kerr",
-  "license": "ISC",
-  "scripts": {
-    "clean": "del-cli dist/*",
-    "build": "npm run clean && tsc -p tsconfig.es5.json && tsc -p tsconfig.es6.json"
-  },
-  "dependencies": {
-    "@babel/runtime": "^7.9.2",
-    "core-js": "^3.6.5"
-  },
-  "devDependencies": {
-    "@types/aws-iot-device-sdk": "^2.2.0",
-    "aws-iot-device-sdk": "^2.2.1",
-    "beacon-utilities": "^1.1.2",
-    "bufferutil": "^4.0.1",
-    "declaration-bundler-webpack-plugin": "^1.0.3",
-    "del-cli": "^3.0.0",
-    "lodash": "^4.17.15",
-    "typescript": "^3.7.3"
-  },
-  "files": [
-    "dist/*",
-    "es6/*"
-  ]
+	"name": "@nrfcloud/gateway-common",
+	"version": "3.1.0",
+	"description": "nRF Cloud Javascript gateway common library",
+	"main": "dist/index.js",
+	"module": "es6/index.js",
+	"author": "Nathan Kerr",
+	"license": "ISC",
+	"scripts": {
+		"clean": "del-cli dist/*",
+		"build": "npm run clean && tsc -p tsconfig.es5.json && tsc -p tsconfig.es6.json"
+	},
+	"dependencies": {
+		"@babel/runtime": "^7.9.2",
+		"core-js": "^3.6.5"
+	},
+	"devDependencies": {
+		"@types/aws-iot-device-sdk": "^2.2.0",
+		"aws-iot-device-sdk": "^2.2.6",
+		"beacon-utilities": "^1.1.2",
+		"bufferutil": "^4.0.1",
+		"declaration-bundler-webpack-plugin": "^1.0.3",
+		"del-cli": "^3.0.0",
+		"lodash": "^4.17.15",
+		"typescript": "^3.7.3"
+	},
+	"files": [
+		"dist/*",
+		"es6/*"
+	]
 }

@@ -167,7 +167,7 @@ var Gateway = /** @class */ (function (_super) {
         _this.gatewayDevice.subscribe(_this.c2gTopic);
         _this.gatewayDevice.subscribe(_this.shadowGetTopic + "/accepted");
         _this.gatewayDevice.subscribe(_this.shadowUpdateTopic);
-        _this.mqttFacade = new mqttFacade_1.MqttFacade(_this.gatewayDevice, _this.g2cTopic, _this.gatewayId);
+        _this.mqttFacade = new mqttFacade_1.MqttFacade(_this.gatewayDevice, _this.g2cTopic, _this.shadowTopic);
         _this.watcherHolder = setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
@@ -232,7 +232,7 @@ var Gateway = /** @class */ (function (_super) {
     });
     Object.defineProperty(Gateway.prototype, "shadowTopic", {
         get: function () {
-            return "$aws/things/" + this.gatewayId + "/shadow";
+            return this.stage + "/" + this.tenantId + "/" + this.gatewayId + "/shadow";
         },
         enumerable: false,
         configurable: true

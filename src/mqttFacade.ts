@@ -16,17 +16,13 @@ import {
 export class MqttFacade {
 	private readonly mqttClient;
 	private readonly g2cTopic: string;
-	private readonly gatewayId: string;
+	private readonly shadowTopic: string;
 	private messageId = 0;
 
-	constructor(mqttClient: awsIot.device, g2cTopic: string, gatewayId: string) {
+	constructor(mqttClient: awsIot.device, g2cTopic: string, shadowTopic: string) {
 		this.g2cTopic = g2cTopic;
 		this.mqttClient = mqttClient;
-		this.gatewayId = gatewayId;
-	}
-
-	private get shadowTopic(): string {
-		return `$aws/things/${this.gatewayId}/shadow`;
+		this.shadowTopic = shadowTopic;
 	}
 
 	handleScanResult(result: ScanResult, timeout: boolean = false) {
