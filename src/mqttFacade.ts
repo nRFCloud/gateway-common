@@ -57,7 +57,7 @@ export class MqttFacade {
 	private reportConnectionStatus(deviceId: string, type: EventType.DeviceConnected | EventType.DeviceDisconnected) {
 		const event: DeviceConnectedEvent | DeviceDisconnectedEvent = {
 			type,
-			device: this.buildDeviceObjectForEvent(deviceId, false),
+			device: this.buildDeviceObjectForEvent(deviceId, type === EventType.DeviceConnected),
 		};
 		this.publishG2CEvent(event);
 	}

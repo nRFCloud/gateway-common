@@ -38,7 +38,7 @@ var MqttFacade = /** @class */ (function () {
     MqttFacade.prototype.reportConnectionStatus = function (deviceId, type) {
         var event = {
             type: type,
-            device: this.buildDeviceObjectForEvent(deviceId, false),
+            device: this.buildDeviceObjectForEvent(deviceId, type === g2c_1.EventType.DeviceConnected),
         };
         this.publishG2CEvent(event);
     };
