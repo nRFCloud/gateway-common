@@ -216,14 +216,15 @@ export class Gateway extends EventEmitter {
                 continue;
             }
             try {
-                const rssi = await this.bluetoothAdapter.getRSSI(deviceId);
-                this.mqttFacade.handleScanResult({
-                    rssi,
+                const result = await this.bluetoothAdapter.getRSSI(deviceId);
+                this.mqttFacade.handleScanResult(Object.assign({}, result, {
+                    rssi: result.rssi,
                     address: {
                         address: deviceId,
                         type: '',
                     },
-                }, false);
+                    name: result.name,
+                }), false);
             }
             catch (err) {
                 //squelch. If there was an error, we don't care since this is not a critical piece of information

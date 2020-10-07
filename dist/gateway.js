@@ -337,7 +337,7 @@ var Gateway = /** @class */ (function (_super) {
     //The way to report about the devices is to send a "scan result" message with the updated information
     Gateway.prototype.performRSSIs = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var _i, _a, deviceId, rssi, err_1;
+            var _i, _a, deviceId, result, err_1;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -355,14 +355,15 @@ var Gateway = /** @class */ (function (_super) {
                         _b.trys.push([2, 4, , 5]);
                         return [4 /*yield*/, this.bluetoothAdapter.getRSSI(deviceId)];
                     case 3:
-                        rssi = _b.sent();
-                        this.mqttFacade.handleScanResult({
-                            rssi: rssi,
+                        result = _b.sent();
+                        this.mqttFacade.handleScanResult(Object.assign({}, result, {
+                            rssi: result.rssi,
                             address: {
                                 address: deviceId,
                                 type: '',
                             },
-                        }, false);
+                            name: result.name,
+                        }), false);
                         return [3 /*break*/, 5];
                     case 4:
                         err_1 = _b.sent();

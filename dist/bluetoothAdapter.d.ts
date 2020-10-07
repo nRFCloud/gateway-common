@@ -72,8 +72,8 @@ export declare abstract class BluetoothAdapter extends EventEmitter {
      */
     abstract unsubscribe(deviceId: string, characteristic: Characteristic): Promise<void>;
     /**
-     * Read the RSSI of a device
+     * Read the RSSI of a device. Return a ScanResult because some adapters can get more than just the rssi number
      * @param deviceId Device ID to read
      */
-    abstract getRSSI(deviceId: string): Promise<number>;
+    abstract getRSSI(deviceId: string): Promise<ScanResult>;
 }
