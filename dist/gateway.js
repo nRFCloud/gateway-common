@@ -100,6 +100,8 @@ var GatewayEvent;
     GatewayEvent["DeviceRemoved"] = "DEVICE_REMOVED";
     GatewayEvent["ConnectionsChanged"] = "CONNECTIONS_CHANGED";
     GatewayEvent["StatusChanged"] = "STATUS_CHANGED";
+    GatewayEvent["DeviceUpdate"] = "DEVICE_UPDATE";
+    GatewayEvent["BeaconUpdate"] = "BEACON_UPDATE";
 })(GatewayEvent = exports.GatewayEvent || (exports.GatewayEvent = {}));
 var Gateway = /** @class */ (function (_super) {
     __extends(Gateway, _super);
@@ -309,6 +311,7 @@ var Gateway = /** @class */ (function (_super) {
     };
     //The gateway's shadow has changed, we need to react to the change
     Gateway.prototype.handleShadowMessage = function (message) {
+        var _a;
         if (!message.state) {
             return;
         }
@@ -318,7 +321,16 @@ var Gateway = /** @class */ (function (_super) {
         }
         //state.desiredConnections is the list of bluetooth connections we should be worried about
         if (newState.desiredConnections) {
-            this.updateDeviceConnections(newState.desiredConnections.map(function (conn) { return conn.id; }));
+            if (!((_a = newState.desiredConnections) === null || _a === void 0 ? void 0 : _a.length)) {
+                this.updateDeviceConnections([]);
+                return;
+            }
+            if (typeof newState.desiredConnections[0] === 'string') {
+                this.updateDeviceConnections(newState.desiredConnections);
+            }
+            else if (typeof newState.desiredConnections[0].id !== 'undefined') {
+                this.updateDeviceConnections(newState.desiredConnections.map(function (conn) { return conn.id; }));
+            }
         }
         //state.name is the name of the gateway
         if (newState.name) {
@@ -337,7 +349,7 @@ var Gateway = /** @class */ (function (_super) {
     //The way to report about the devices is to send a "scan result" message with the updated information
     Gateway.prototype.performRSSIs = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var _i, _a, deviceId, result, err_1;
+            var _i, _a, deviceId, result, updatedDeviceObj, err_1;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
@@ -356,14 +368,16 @@ var Gateway = /** @class */ (function (_super) {
                         return [4 /*yield*/, this.bluetoothAdapter.getRSSI(deviceId)];
                     case 3:
                         result = _b.sent();
-                        this.mqttFacade.handleScanResult(Object.assign({}, result, {
+                        updatedDeviceObj = Object.assign({}, result, {
                             rssi: result.rssi,
                             address: {
                                 address: deviceId,
                                 type: '',
                             },
                             name: result.name,
-                        }), false);
+                        });
+                        this.emit(GatewayEvent.DeviceUpdate, updatedDeviceObj);
+                        this.mqttFacade.handleScanResult(updatedDeviceObj, false);
                         return [3 /*break*/, 5];
                     case 4:
                         err_1 = _b.sent();
@@ -394,6 +408,7 @@ var Gateway = /** @class */ (function (_super) {
                 return [2 /*return*/, new Promise(function (resolve) {
                         _this.bluetoothAdapter.startScan(function (result) {
                             if (_this.watchList.includes(result.address.address)) {
+                                _this.emit(GatewayEvent.BeaconUpdate, result);
                                 _this.mqttFacade.handleScanResult(result, false);
                             }
                         });

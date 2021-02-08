@@ -8,7 +8,9 @@ export declare enum GatewayEvent {
     Deleted = "GATEWAY_DELETED",
     DeviceRemoved = "DEVICE_REMOVED",
     ConnectionsChanged = "CONNECTIONS_CHANGED",
-    StatusChanged = "STATUS_CHANGED"
+    StatusChanged = "STATUS_CHANGED",
+    DeviceUpdate = "DEVICE_UPDATE",
+    BeaconUpdate = "BEACON_UPDATE"
 }
 export declare type GatewayConfiguration = {
     keyPath?: string;

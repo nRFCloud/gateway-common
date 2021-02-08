@@ -15,6 +15,8 @@ export var GatewayEvent;
     GatewayEvent["DeviceRemoved"] = "DEVICE_REMOVED";
     GatewayEvent["ConnectionsChanged"] = "CONNECTIONS_CHANGED";
     GatewayEvent["StatusChanged"] = "STATUS_CHANGED";
+    GatewayEvent["DeviceUpdate"] = "DEVICE_UPDATE";
+    GatewayEvent["BeaconUpdate"] = "BEACON_UPDATE";
 })(GatewayEvent || (GatewayEvent = {}));
 export class Gateway extends EventEmitter {
     constructor(config) {
@@ -192,7 +194,16 @@ export class Gateway extends EventEmitter {
         }
         //state.desiredConnections is the list of bluetooth connections we should be worried about
         if (newState.desiredConnections) {
-            this.updateDeviceConnections(newState.desiredConnections.map((conn) => conn.id));
+            if (!newState.desiredConnections?.length) {
+                this.updateDeviceConnections([]);
+                return;
+            }
+            if (typeof newState.desiredConnections[0] === 'string') {
+                this.updateDeviceConnections(newState.desiredConnections);
+            }
+            else if (typeof newState.desiredConnections[0].id !== 'undefined') {
+                this.updateDeviceConnections(newState.desiredConnections.map((conn) => conn.id));
+            }
         }
         //state.name is the name of the gateway
         if (newState.name) {
@@ -217,14 +228,16 @@ export class Gateway extends EventEmitter {
             }
             try {
                 const result = await this.bluetoothAdapter.getRSSI(deviceId);
-                this.mqttFacade.handleScanResult(Object.assign({}, result, {
+                const updatedDeviceObj = Object.assign({}, result, {
                     rssi: result.rssi,
                     address: {
                         address: deviceId,
                         type: '',
                     },
                     name: result.name,
-                }), false);
+                });
+                this.emit(GatewayEvent.DeviceUpdate, updatedDeviceObj);
+                this.mqttFacade.handleScanResult(updatedDeviceObj, false);
             }
             catch (err) {
                 //squelch. If there was an error, we don't care since this is not a critical piece of information
@@ -246,6 +259,7 @@ export class Gateway extends EventEmitter {
         return new Promise((resolve) => {
             this.bluetoothAdapter.startScan((result) => {
                 if (this.watchList.includes(result.address.address)) {
+                    this.emit(GatewayEvent.BeaconUpdate, result);
                     this.mqttFacade.handleScanResult(result, false);
                 }
             });

@@ -65,6 +65,25 @@ export interface DeviceConnections {
 	[deviceId: string]: boolean;
 }
 
+interface BLEDeviceConnection {
+	address: {
+		address: string;
+	};
+	image?: string;
+	id?: string;
+	connectOptions?: any;
+}
+
+interface State {
+	name?: string;
+	desiredConnections?: BLEDeviceConnection[] | string[];
+	beacons?: string[];
+	image?: string;
+	simIccid?: string;
+	simEid?: string;
+	stage: string;
+}
+
 export class Gateway extends EventEmitter {
 	readonly gatewayId: string;
 	readonly stage: string;
@@ -280,14 +299,22 @@ export class Gateway extends EventEmitter {
 			return;
 		}
 
-		const newState = message.state.desired || message.state;
+		const newState: State = message.state.desired || message.state;
 		if (!newState) {
 			return;
 		}
 
 		//state.desiredConnections is the list of bluetooth connections we should be worried about
 		if (newState.desiredConnections) {
-			this.updateDeviceConnections(newState.desiredConnections.map((conn) => conn.id));
+			if (!newState.desiredConnections?.length) {
+				this.updateDeviceConnections([]);
+				return;
+			}
+			if (typeof newState.desiredConnections[0] === 'string') {
+				this.updateDeviceConnections((newState.desiredConnections as string[]));
+			} else if (typeof (newState.desiredConnections[0] as BLEDeviceConnection).id !== 'undefined') {
+				this.updateDeviceConnections((newState.desiredConnections as BLEDeviceConnection[]).map((conn) => conn.id));
+			}
 		}
 
 		//state.name is the name of the gateway
