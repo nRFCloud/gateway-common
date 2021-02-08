@@ -28,6 +28,7 @@ export declare type GatewayConfiguration = {
     debug?: boolean;
     watchInterval?: number;
     watchDuration?: number;
+    supportsBLEFOTA?: boolean;
 };
 export interface GatewayState {
     scanning: boolean;
@@ -46,6 +47,7 @@ export declare class Gateway extends EventEmitter {
     readonly mqttFacade: MqttFacade;
     readonly watchInterval: number;
     readonly watchDuration: number;
+    readonly supportsBLEFOTA: boolean;
     private deviceConnections;
     private deviceConnectionIntervalHolder;
     private lastTriedAddress;

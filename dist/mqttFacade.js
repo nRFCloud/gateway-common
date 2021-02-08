@@ -2,12 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MqttFacade = void 0;
 var g2c_1 = require("./interfaces/g2c");
+var FotaType;
+(function (FotaType) {
+    FotaType["App"] = "APP";
+    FotaType["Boot"] = "BOOT";
+    FotaType["Modem"] = "MODEM";
+})(FotaType || (FotaType = {}));
 var MqttFacade = /** @class */ (function () {
-    function MqttFacade(mqttClient, g2cTopic, shadowTopic) {
+    function MqttFacade(mqttClient, g2cTopic, shadowTopic, gatewayId) {
         this.messageId = 0;
         this.g2cTopic = g2cTopic;
         this.mqttClient = mqttClient;
         this.shadowTopic = shadowTopic;
+        this.gatewayId = gatewayId;
     }
     MqttFacade.prototype.handleScanResult = function (result, timeout) {
         if (timeout === void 0) { timeout = false; }
@@ -24,6 +31,21 @@ var MqttFacade = /** @class */ (function () {
             state: {
                 reported: {
                     statusConnections: statusConnections,
+                },
+            },
+        };
+        this.publish(this.shadowTopic + "/update", shadowUpdate);
+    };
+    MqttFacade.prototype.reportBLEFOTAStatus = function (status) {
+        var fotaV2 = status ? [FotaType.App, FotaType.Modem, FotaType.Boot] : null;
+        var shadowUpdate = {
+            state: {
+                reported: {
+                    device: {
+                        serviceInfo: {
+                            fota_v2: fotaV2,
+                        },
+                    },
                 },
             },
         };
@@ -123,7 +145,7 @@ var MqttFacade = /** @class */ (function () {
         }
         return {
             type: 'event',
-            gatewayId: this.mqttClient.clientId,
+            gatewayId: this.gatewayId,
             event: event,
         };
     };

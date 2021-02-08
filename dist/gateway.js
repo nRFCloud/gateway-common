@@ -106,6 +106,7 @@ var GatewayEvent;
 var Gateway = /** @class */ (function (_super) {
     __extends(Gateway, _super);
     function Gateway(config) {
+        var _a;
         var _this = _super.call(this) || this;
         _this.deviceConnections = {};
         _this.deviceConnectionIntervalHolder = null;
@@ -119,6 +120,7 @@ var Gateway = /** @class */ (function (_super) {
         _this.bluetoothAdapter = config.bluetoothAdapter;
         _this.watchInterval = config.watchInterval || 60;
         _this.watchDuration = config.watchDuration || 2;
+        _this.supportsBLEFOTA = (_a = config.supportsBLEFOTA) !== null && _a !== void 0 ? _a : false;
         _this.state = {
             isTryingConnection: false,
             scanning: false,
@@ -151,6 +153,7 @@ var Gateway = /** @class */ (function (_super) {
             console.log('connect');
             //To finish the connection, an empty string must be published to the shadowGet topic
             _this.gatewayDevice.publish(_this.shadowGetTopic, '');
+            _this.mqttFacade.reportBLEFOTAStatus(_this.supportsBLEFOTA);
             _this.updateState({ connected: true });
         });
         _this.gatewayDevice.on('message', function (topic, payload) {
@@ -169,7 +172,7 @@ var Gateway = /** @class */ (function (_super) {
         _this.gatewayDevice.subscribe(_this.c2gTopic);
         _this.gatewayDevice.subscribe(_this.shadowGetTopic + "/accepted");
         _this.gatewayDevice.subscribe(_this.shadowUpdateTopic);
-        _this.mqttFacade = new mqttFacade_1.MqttFacade(_this.gatewayDevice, _this.g2cTopic, _this.shadowTopic);
+        _this.mqttFacade = new mqttFacade_1.MqttFacade(_this.gatewayDevice, _this.g2cTopic, _this.shadowTopic, _this.gatewayId);
         _this.watcherHolder = setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {

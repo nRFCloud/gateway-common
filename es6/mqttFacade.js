@@ -1,10 +1,17 @@
 import { EventType, } from './interfaces/g2c';
+var FotaType;
+(function (FotaType) {
+    FotaType["App"] = "APP";
+    FotaType["Boot"] = "BOOT";
+    FotaType["Modem"] = "MODEM";
+})(FotaType || (FotaType = {}));
 export class MqttFacade {
-    constructor(mqttClient, g2cTopic, shadowTopic) {
+    constructor(mqttClient, g2cTopic, shadowTopic, gatewayId) {
         this.messageId = 0;
         this.g2cTopic = g2cTopic;
         this.mqttClient = mqttClient;
         this.shadowTopic = shadowTopic;
+        this.gatewayId = gatewayId;
     }
     handleScanResult(result, timeout = false) {
         const event = {
@@ -20,6 +27,21 @@ export class MqttFacade {
             state: {
                 reported: {
                     statusConnections,
+                },
+            },
+        };
+        this.publish(`${this.shadowTopic}/update`, shadowUpdate);
+    }
+    reportBLEFOTAStatus(status) {
+        const fotaV2 = status ? [FotaType.App, FotaType.Modem, FotaType.Boot] : null;
+        const shadowUpdate = {
+            state: {
+                reported: {
+                    device: {
+                        serviceInfo: {
+                            fota_v2: fotaV2,
+                        },
+                    },
                 },
             },
         };
@@ -119,7 +141,7 @@ export class MqttFacade {
         }
         return {
             type: 'event',
-            gatewayId: this.mqttClient.clientId,
+            gatewayId: this.gatewayId,
             event,
         };
     }

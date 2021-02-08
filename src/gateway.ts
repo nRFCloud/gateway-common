@@ -53,6 +53,7 @@ export type GatewayConfiguration = {
 	debug?: boolean; //Passed through to the AWS IoT device object
 	watchInterval?: number; //How often to perform watches (beacons and RSSIs), defaults to 60 seconds
 	watchDuration?: number; //How long to look for beacons, defaults to 2 seconds
+	supportsBLEFOTA?: boolean; //Does this gateway support BLE FOTA?
 };
 
 export interface GatewayState {
@@ -93,6 +94,7 @@ export class Gateway extends EventEmitter {
 	readonly mqttFacade: MqttFacade;
 	readonly watchInterval: number;
 	readonly watchDuration: number;
+	readonly supportsBLEFOTA: boolean;
 
 	private deviceConnections: DeviceConnections = {};
 	private deviceConnectionIntervalHolder = null;
@@ -147,6 +149,7 @@ export class Gateway extends EventEmitter {
 		this.bluetoothAdapter = config.bluetoothAdapter;
 		this.watchInterval = config.watchInterval || 60;
 		this.watchDuration = config.watchDuration || 2;
+		this.supportsBLEFOTA = config.supportsBLEFOTA ?? false;
 		this.state = {
 			isTryingConnection: false,
 			scanning: false,
@@ -183,6 +186,7 @@ export class Gateway extends EventEmitter {
 			console.log('connect');
 			//To finish the connection, an empty string must be published to the shadowGet topic
 			this.gatewayDevice.publish(this.shadowGetTopic, '');
+			this.mqttFacade.reportBLEFOTAStatus(this.supportsBLEFOTA);
 			this.updateState({ connected: true });
 		});
 
@@ -206,7 +210,7 @@ export class Gateway extends EventEmitter {
 		this.gatewayDevice.subscribe(`${this.shadowGetTopic}/accepted`);
 		this.gatewayDevice.subscribe(this.shadowUpdateTopic);
 
-		this.mqttFacade = new MqttFacade(this.gatewayDevice, this.g2cTopic, this.shadowTopic);
+		this.mqttFacade = new MqttFacade(this.gatewayDevice, this.g2cTopic, this.shadowTopic, this.gatewayId);
 
 		this.watcherHolder = setInterval(async () => {
 			await this.performWatches();

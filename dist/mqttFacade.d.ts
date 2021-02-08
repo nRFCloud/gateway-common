@@ -5,10 +5,12 @@ export declare class MqttFacade {
     private readonly mqttClient;
     private readonly g2cTopic;
     private readonly shadowTopic;
+    private readonly gatewayId;
     private messageId;
-    constructor(mqttClient: awsIot.device, g2cTopic: string, shadowTopic: string);
+    constructor(mqttClient: awsIot.device, g2cTopic: string, shadowTopic: string, gatewayId: string);
     handleScanResult(result: ScanResult, timeout?: boolean): void;
     reportConnections(statusConnections: any): void;
+    reportBLEFOTAStatus(status: boolean): void;
     reportConnectionUp(deviceId: string): void;
     reportConnectionDown(deviceId: string): void;
     private reportConnectionStatus;
