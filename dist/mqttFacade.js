@@ -9,12 +9,14 @@ var FotaType;
     FotaType["Modem"] = "MODEM";
 })(FotaType || (FotaType = {}));
 var MqttFacade = /** @class */ (function () {
-    function MqttFacade(mqttClient, g2cTopic, shadowTopic, gatewayId) {
+    function MqttFacade(options) {
         this.messageId = 0;
+        var g2cTopic = options.g2cTopic, gatewayId = options.gatewayId, mqttClient = options.mqttClient, shadowTopic = options.shadowTopic, bleFotaTopic = options.bleFotaTopic;
         this.g2cTopic = g2cTopic;
         this.mqttClient = mqttClient;
         this.shadowTopic = shadowTopic;
         this.gatewayId = gatewayId;
+        this.bleFotaTopic = bleFotaTopic;
     }
     MqttFacade.prototype.handleScanResult = function (result, timeout) {
         if (timeout === void 0) { timeout = false; }
@@ -36,7 +38,7 @@ var MqttFacade = /** @class */ (function () {
         };
         this.publish(this.shadowTopic + "/update", shadowUpdate);
     };
-    MqttFacade.prototype.reportBLEFOTAStatus = function (status) {
+    MqttFacade.prototype.reportBLEFOTAAvailability = function (status) {
         var fotaV2 = status ? [FotaType.App, FotaType.Modem, FotaType.Boot] : null;
         var shadowUpdate = {
             state: {
@@ -50,6 +52,9 @@ var MqttFacade = /** @class */ (function () {
             },
         };
         this.publish(this.shadowTopic + "/update", shadowUpdate);
+    };
+    MqttFacade.prototype.reportBLEFOTAStatus = function (data) {
+        this.publish(this.bleFotaTopic + "/update", data);
     };
     MqttFacade.prototype.reportConnectionUp = function (deviceId) {
         this.reportConnectionStatus(deviceId, g2c_1.EventType.DeviceConnected);
@@ -134,6 +139,9 @@ var MqttFacade = /** @class */ (function () {
             device: this.buildDeviceObjectForEvent(deviceId, true),
         };
         this.publishG2CEvent(event);
+    };
+    MqttFacade.prototype.requestJobsForDevice = function (deviceId) {
+        this.publish(this.bleFotaTopic + "/req", [deviceId]);
     };
     MqttFacade.prototype.publishG2CEvent = function (event) {
         var g2cEvent = this.getG2CEvent(event);

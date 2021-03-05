@@ -2,6 +2,7 @@ import * as awsIot from 'aws-iot-device-sdk';
 import { EventEmitter } from 'events';
 import isEqual from 'lodash/isEqual';
 import { isBeacon } from 'beacon-utilities';
+import fetch from 'cross-fetch';
 
 import { AdapterEvent, BluetoothAdapter } from './bluetoothAdapter';
 import { MqttFacade } from './mqttFacade';
@@ -18,7 +19,8 @@ import {
 	ScanType,
 } from './interfaces/c2g';
 import { assumeType } from './utils';
-import { ScanResult } from './interfaces/scanResult';
+import { FotaAdapter, UpdateStatus } from './fotaAdapter';
+import { ScanResult, JobExecutionStatus } from './interfaces/interfaces';
 
 const CLIENT_CHARACTERISTIC_CONFIGURATION = '2902';
 
@@ -46,6 +48,7 @@ export type GatewayConfiguration = {
 	stage?: string; //What stage this device is on, defaults to "prod"
 	tenantId: string; //The tenant ID for the associated tenant
 	bluetoothAdapter: BluetoothAdapter;
+	fotaAdapter?: FotaAdapter; //If this gateway implementation supports BLE FOTA, it indicates this support by supplying the adapter
 	protocol?: 'mqtts' | 'wss'; //If not set, the gateway will try to guess based on what values are set
 	accessKeyId?: string; //From a valid Cognito session
 	secretKey?: string; //From a valid Cognito session
@@ -53,7 +56,6 @@ export type GatewayConfiguration = {
 	debug?: boolean; //Passed through to the AWS IoT device object
 	watchInterval?: number; //How often to perform watches (beacons and RSSIs), defaults to 60 seconds
 	watchDuration?: number; //How long to look for beacons, defaults to 2 seconds
-	supportsBLEFOTA?: boolean; //Does this gateway support BLE FOTA?
 };
 
 export interface GatewayState {
@@ -94,7 +96,7 @@ export class Gateway extends EventEmitter {
 	readonly mqttFacade: MqttFacade;
 	readonly watchInterval: number;
 	readonly watchDuration: number;
-	readonly supportsBLEFOTA: boolean;
+	readonly fotaAdapter: FotaAdapter = null;
 
 	private deviceConnections: DeviceConnections = {};
 	private deviceConnectionIntervalHolder = null;
@@ -105,6 +107,9 @@ export class Gateway extends EventEmitter {
 
 	private watchList: string[] = [];
 	private watcherHolder;
+
+	private fotaMap: { [key: string]: { [key: string]: string } } = {};
+
 
 	private state: GatewayState;
 
@@ -128,6 +133,10 @@ export class Gateway extends EventEmitter {
 		return this._name;
 	}
 
+	private get topicPrefix(): string {
+		return `${this.stage}/${this.tenantId}/${this.gatewayId}`;
+	}
+
 	private get shadowGetTopic(): string {
 		return `${this.shadowTopic}/get`;
 	}
@@ -137,19 +146,27 @@ export class Gateway extends EventEmitter {
 	}
 
 	private get shadowTopic(): string {
-		return `${this.stage}/${this.tenantId}/${this.gatewayId}/shadow`;
+		return `${this.topicPrefix}/shadow`;
+	}
+
+	private get fotaTopicPrefix(): string {
+		return `${this.topicPrefix}/jobs/ble`;
+	}
+
+	private get bleFotaRcvTopic(): string {
+		return `${this.fotaTopicPrefix}/rcv`;
 	}
 
 	constructor(config: GatewayConfiguration) {
 		super();
 
 		this.gatewayId = config.gatewayId;
-		this.stage = config.stage || 'prod';
+		this.stage = config.stage ?? 'prod';
 		this.tenantId = config.tenantId;
 		this.bluetoothAdapter = config.bluetoothAdapter;
-		this.watchInterval = config.watchInterval || 60;
-		this.watchDuration = config.watchDuration || 2;
-		this.supportsBLEFOTA = config.supportsBLEFOTA ?? false;
+		this.fotaAdapter = config.fotaAdapter ?? null;
+		this.watchInterval = config.watchInterval ?? 60;
+		this.watchDuration = config.watchDuration ?? 2;
 		this.state = {
 			isTryingConnection: false,
 			scanning: false,
@@ -159,6 +176,7 @@ export class Gateway extends EventEmitter {
 		this.bluetoothAdapter.on(AdapterEvent.DeviceConnected, (deviceId) => {
 			this.deviceConnections[deviceId] = true;
 			this.reportConnectionUp(deviceId);
+			this.mqttFacade.requestJobsForDevice(deviceId); //Since this device just connected, we want to know if there are any outstanding FOTA jobs
 		});
 
 		this.bluetoothAdapter.on(AdapterEvent.DeviceDisconnected, (deviceId) => {
@@ -175,7 +193,7 @@ export class Gateway extends EventEmitter {
 			caPath: config.caPath,
 			clientId: this.gatewayId,
 			host: config.host,
-			protocol: config.protocol || (config.accessKeyId ? 'wss' : 'mqtts'), //if not set, try to guess
+			protocol: config.protocol ?? (config.accessKeyId ? 'wss' : 'mqtts'), //if not set, try to guess
 			accessKeyId: config.accessKeyId,
 			secretKey: config.secretKey,
 			sessionToken: config.sessionToken,
@@ -186,7 +204,7 @@ export class Gateway extends EventEmitter {
 			console.log('connect');
 			//To finish the connection, an empty string must be published to the shadowGet topic
 			this.gatewayDevice.publish(this.shadowGetTopic, '');
-			this.mqttFacade.reportBLEFOTAStatus(this.supportsBLEFOTA);
+			this.mqttFacade.reportBLEFOTAAvailability(this.fotaAdapter !== null);
 			this.updateState({ connected: true });
 		});
 
@@ -201,16 +219,27 @@ export class Gateway extends EventEmitter {
 		});
 
 		/*
-		The gateway needs to listen to three topics:
+		The gateway needs to listen to these topics:
 		c2g: this is the primary way that the cloud talks to the gateway (cloud2gateway). Operations are sent over this topic like "start scanning"
 		shadowGet/accepted:
 		shadowUpdate: Both of these deal with the device's shadow. This is how bluetooth devices are "added" to a gateway as well as beacons. They're for different things, but can be handled the same
+		bleFotaRcvTopic: FOTA messages are received via this topic. We also check for FOTA updates when a device connects (see above)
 		 */
 		this.gatewayDevice.subscribe(this.c2gTopic);
 		this.gatewayDevice.subscribe(`${this.shadowGetTopic}/accepted`);
 		this.gatewayDevice.subscribe(this.shadowUpdateTopic);
 
-		this.mqttFacade = new MqttFacade(this.gatewayDevice, this.g2cTopic, this.shadowTopic, this.gatewayId);
+		if (this.fotaAdapter !== null) {
+			this.gatewayDevice.subscribe(this.bleFotaRcvTopic);
+		}
+
+		this.mqttFacade = new MqttFacade({
+			mqttClient: this.gatewayDevice,
+			g2cTopic: this.g2cTopic,
+			shadowTopic: this.shadowTopic,
+			gatewayId: this.gatewayId,
+			bleFotaTopic: this.fotaTopicPrefix,
+		});
 
 		this.watcherHolder = setInterval(async () => {
 			await this.performWatches();
@@ -218,7 +247,7 @@ export class Gateway extends EventEmitter {
 		}, this.watchInterval * 1000);
 	}
 
-	private handleMessage(topic: string, payload) {
+	private handleMessage(topic: string, payload: string) {
 		const message = JSON.parse(payload);
 		if (topic === this.c2gTopic) {
 			this.handleC2GMessage(message);
@@ -226,6 +255,11 @@ export class Gateway extends EventEmitter {
 
 		if (topic.startsWith(this.shadowTopic)) {
 			this.handleShadowMessage(message);
+		}
+
+		if (topic === this.bleFotaRcvTopic) {
+			console.info('got ble fota message', message);
+			this.handleFotaMessage(message);
 		}
 	}
 
@@ -335,6 +369,65 @@ export class Gateway extends EventEmitter {
 	//Beacons are just a flat list of ids
 	private handleBeaconState(beacons: string[]) {
 		this.watchList = beacons;
+	}
+
+	private handleFotaMessage(message: string[]): void {
+		if (this.fotaAdapter === null) { //we don't have anything to use to handle fota, so ignore
+			return;
+		}
+
+		const [deviceId, jobId, jobStatus, downloadSize, host, path] = message;
+		if (typeof this.fotaMap[deviceId] === 'undefined') {
+			this.fotaMap[deviceId] = {};
+		}
+		if (typeof this.fotaMap[deviceId][jobId] === 'undefined') {
+			this.fotaMap[deviceId][jobId] = `https://${host}/${path}`;
+			setTimeout(async () => { //pull out of sync code into next tick
+				const response = await fetch(this.fotaMap[deviceId][jobId]);
+				if (!response.ok) {
+					//TODO: Handle this
+					return;
+				}
+				let blob: Blob;
+				if (typeof response.body?.getReader === 'function') {
+					const reader = response.body.getReader();
+					const contentLength = +response.headers.get('Content-Length');
+					let receivedLength = 0;
+					const chunks = [];
+
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) {
+							break;
+						}
+						chunks.push(value);
+						receivedLength += value.length;
+						//report download progress
+						const percentage = Math.round(receivedLength / contentLength * 100);
+						this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Downloading, percentage]);
+					}
+
+					blob = new Blob(chunks);
+				} else {
+					//Can't do incremental download, just get the blob
+					blob = await response.blob();
+				}
+				this.fotaAdapter.startUpdate(blob, deviceId, (update) => {
+					if (update.error) {
+						this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Failed, update.message]);
+						return;
+					}
+					switch (update.status) {
+						case UpdateStatus.DfuAborted:
+							this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Failed, update.message]);
+							break;
+						case UpdateStatus.DfuCompleted:
+							this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Succeeded]);
+							break;
+					}
+				});
+			}, 0);
+		}
 	}
 
 	//On a timer, we should report the RSSIs of the devices

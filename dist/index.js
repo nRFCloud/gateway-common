@@ -12,6 +12,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./gateway"), exports);
 __exportStar(require("./bluetoothAdapter"), exports);
+__exportStar(require("./fotaAdapter"), exports);
 __exportStar(require("./utils"), exports);
 __exportStar(require("./interfaces/interfaces"), exports);
 //# sourceMappingURL=index.js.map

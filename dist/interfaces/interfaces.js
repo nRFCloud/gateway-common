@@ -15,4 +15,5 @@ __exportStar(require("./c2g"), exports);
 __exportStar(require("./device"), exports);
 __exportStar(require("./g2c"), exports);
 __exportStar(require("./scanResult"), exports);
+__exportStar(require("./fota"), exports);
 //# sourceMappingURL=interfaces.js.map

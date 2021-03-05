@@ -6,12 +6,14 @@ var FotaType;
     FotaType["Modem"] = "MODEM";
 })(FotaType || (FotaType = {}));
 export class MqttFacade {
-    constructor(mqttClient, g2cTopic, shadowTopic, gatewayId) {
+    constructor(options) {
         this.messageId = 0;
+        const { g2cTopic, gatewayId, mqttClient, shadowTopic, bleFotaTopic } = options;
         this.g2cTopic = g2cTopic;
         this.mqttClient = mqttClient;
         this.shadowTopic = shadowTopic;
         this.gatewayId = gatewayId;
+        this.bleFotaTopic = bleFotaTopic;
     }
     handleScanResult(result, timeout = false) {
         const event = {
@@ -32,7 +34,7 @@ export class MqttFacade {
         };
         this.publish(`${this.shadowTopic}/update`, shadowUpdate);
     }
-    reportBLEFOTAStatus(status) {
+    reportBLEFOTAAvailability(status) {
         const fotaV2 = status ? [FotaType.App, FotaType.Modem, FotaType.Boot] : null;
         const shadowUpdate = {
             state: {
@@ -46,6 +48,9 @@ export class MqttFacade {
             },
         };
         this.publish(`${this.shadowTopic}/update`, shadowUpdate);
+    }
+    reportBLEFOTAStatus(data) {
+        this.publish(`${this.bleFotaTopic}/update`, data);
     }
     reportConnectionUp(deviceId) {
         this.reportConnectionStatus(deviceId, EventType.DeviceConnected);
@@ -130,6 +135,9 @@ export class MqttFacade {
             device: this.buildDeviceObjectForEvent(deviceId, true),
         };
         this.publishG2CEvent(event);
+    }
+    requestJobsForDevice(deviceId) {
+        this.publish(`${this.bleFotaTopic}/req`, [deviceId]);
     }
     publishG2CEvent(event) {
         const g2cEvent = this.getG2CEvent(event);

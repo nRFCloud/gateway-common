@@ -16,24 +16,24 @@ export abstract class BluetoothAdapter extends EventEmitter {
 	 */
 	abstract startScan(
 		resultCallback: (deviceScanResult: ScanResult) => void,
-	);
+	): void;
 
 	/**
 	 * Stop scanning for devices
 	 */
-	abstract stopScan();
+	abstract stopScan(): void;
 
 	/**
 	 * Connect to a BLE device. The adapter is responsible for reporting connection status by emitting the appropriate events
 	 * @param id Device ID to connect to
 	 */
-	abstract connect(id: string): Promise<any>;
+	abstract connect(id: string): Promise<void>;
 
 	/**
 	 * Disconnect (remove) device connection
 	 * @param id Device ID to disconnect from
 	 */
-	abstract disconnect(id: string): Promise<any>;
+	abstract disconnect(id: string): Promise<void>;
 
 	/**
 	 * Discover and read all values of the given device

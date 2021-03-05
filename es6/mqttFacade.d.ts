@@ -1,16 +1,25 @@
 import * as awsIot from 'aws-iot-device-sdk';
 import { ScanResult } from './interfaces/scanResult';
 import { Characteristic, Descriptor, Services } from './interfaces/bluetooth';
+export interface MqttFacadeOptions {
+    mqttClient: awsIot.device;
+    g2cTopic: string;
+    shadowTopic: string;
+    gatewayId: string;
+    bleFotaTopic: string;
+}
 export declare class MqttFacade {
     private readonly mqttClient;
     private readonly g2cTopic;
     private readonly shadowTopic;
     private readonly gatewayId;
+    private readonly bleFotaTopic;
     private messageId;
-    constructor(mqttClient: awsIot.device, g2cTopic: string, shadowTopic: string, gatewayId: string);
+    constructor(options: MqttFacadeOptions);
     handleScanResult(result: ScanResult, timeout?: boolean): void;
     reportConnections(statusConnections: any): void;
-    reportBLEFOTAStatus(status: boolean): void;
+    reportBLEFOTAAvailability(status: boolean): void;
+    reportBLEFOTAStatus(data: (string | number)[]): void;
     reportConnectionUp(deviceId: string): void;
     reportConnectionDown(deviceId: string): void;
     private reportConnectionStatus;
@@ -22,6 +31,7 @@ export declare class MqttFacade {
     reportDescriptorRead(deviceId: string, descriptor: Descriptor): void;
     reportDescriptorWrite(deviceId: string, descriptor: Descriptor): void;
     reportDescriptorChanged(deviceId: string, descriptor: Descriptor): void;
+    requestJobsForDevice(deviceId: string): void;
     private publishG2CEvent;
     private getG2CEvent;
     private publish;

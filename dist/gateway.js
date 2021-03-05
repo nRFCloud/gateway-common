@@ -87,11 +87,14 @@ var awsIot = __importStar(require("aws-iot-device-sdk"));
 var events_1 = require("events");
 var isEqual_1 = __importDefault(require("lodash/isEqual"));
 var beacon_utilities_1 = require("beacon-utilities");
+var cross_fetch_1 = __importDefault(require("cross-fetch"));
 var bluetoothAdapter_1 = require("./bluetoothAdapter");
 var mqttFacade_1 = require("./mqttFacade");
 var bluetooth_1 = require("./interfaces/bluetooth");
 var c2g_1 = require("./interfaces/c2g");
 var utils_1 = require("./utils");
+var fotaAdapter_1 = require("./fotaAdapter");
+var interfaces_1 = require("./interfaces/interfaces");
 var CLIENT_CHARACTERISTIC_CONFIGURATION = '2902';
 var GatewayEvent;
 (function (GatewayEvent) {
@@ -106,21 +109,23 @@ var GatewayEvent;
 var Gateway = /** @class */ (function (_super) {
     __extends(Gateway, _super);
     function Gateway(config) {
-        var _a;
+        var _a, _b, _c, _d, _e;
         var _this = _super.call(this) || this;
+        _this.fotaAdapter = null;
         _this.deviceConnections = {};
         _this.deviceConnectionIntervalHolder = null;
         _this.lastTriedAddress = null;
         _this._name = '';
         _this.discoveryCache = {};
         _this.watchList = [];
+        _this.fotaMap = {};
         _this.gatewayId = config.gatewayId;
-        _this.stage = config.stage || 'prod';
+        _this.stage = (_a = config.stage) !== null && _a !== void 0 ? _a : 'prod';
         _this.tenantId = config.tenantId;
         _this.bluetoothAdapter = config.bluetoothAdapter;
-        _this.watchInterval = config.watchInterval || 60;
-        _this.watchDuration = config.watchDuration || 2;
-        _this.supportsBLEFOTA = (_a = config.supportsBLEFOTA) !== null && _a !== void 0 ? _a : false;
+        _this.fotaAdapter = (_b = config.fotaAdapter) !== null && _b !== void 0 ? _b : null;
+        _this.watchInterval = (_c = config.watchInterval) !== null && _c !== void 0 ? _c : 60;
+        _this.watchDuration = (_d = config.watchDuration) !== null && _d !== void 0 ? _d : 2;
         _this.state = {
             isTryingConnection: false,
             scanning: false,
@@ -129,6 +134,7 @@ var Gateway = /** @class */ (function (_super) {
         _this.bluetoothAdapter.on(bluetoothAdapter_1.AdapterEvent.DeviceConnected, function (deviceId) {
             _this.deviceConnections[deviceId] = true;
             _this.reportConnectionUp(deviceId);
+            _this.mqttFacade.requestJobsForDevice(deviceId); //Since this device just connected, we want to know if there are any outstanding FOTA jobs
         });
         _this.bluetoothAdapter.on(bluetoothAdapter_1.AdapterEvent.DeviceDisconnected, function (deviceId) {
             if (typeof _this.deviceConnections[deviceId] !== 'undefined') {
@@ -143,7 +149,7 @@ var Gateway = /** @class */ (function (_super) {
             caPath: config.caPath,
             clientId: _this.gatewayId,
             host: config.host,
-            protocol: config.protocol || (config.accessKeyId ? 'wss' : 'mqtts'),
+            protocol: (_e = config.protocol) !== null && _e !== void 0 ? _e : (config.accessKeyId ? 'wss' : 'mqtts'),
             accessKeyId: config.accessKeyId,
             secretKey: config.secretKey,
             sessionToken: config.sessionToken,
@@ -153,7 +159,7 @@ var Gateway = /** @class */ (function (_super) {
             console.log('connect');
             //To finish the connection, an empty string must be published to the shadowGet topic
             _this.gatewayDevice.publish(_this.shadowGetTopic, '');
-            _this.mqttFacade.reportBLEFOTAStatus(_this.supportsBLEFOTA);
+            _this.mqttFacade.reportBLEFOTAAvailability(_this.fotaAdapter !== null);
             _this.updateState({ connected: true });
         });
         _this.gatewayDevice.on('message', function (topic, payload) {
@@ -164,15 +170,25 @@ var Gateway = /** @class */ (function (_super) {
             _this.updateState({ connected: false });
         });
         /*
-        The gateway needs to listen to three topics:
+        The gateway needs to listen to these topics:
         c2g: this is the primary way that the cloud talks to the gateway (cloud2gateway). Operations are sent over this topic like "start scanning"
         shadowGet/accepted:
         shadowUpdate: Both of these deal with the device's shadow. This is how bluetooth devices are "added" to a gateway as well as beacons. They're for different things, but can be handled the same
+        bleFotaRcvTopic: FOTA messages are received via this topic. We also check for FOTA updates when a device connects (see above)
          */
         _this.gatewayDevice.subscribe(_this.c2gTopic);
         _this.gatewayDevice.subscribe(_this.shadowGetTopic + "/accepted");
         _this.gatewayDevice.subscribe(_this.shadowUpdateTopic);
-        _this.mqttFacade = new mqttFacade_1.MqttFacade(_this.gatewayDevice, _this.g2cTopic, _this.shadowTopic, _this.gatewayId);
+        if (_this.fotaAdapter !== null) {
+            _this.gatewayDevice.subscribe(_this.bleFotaRcvTopic);
+        }
+        _this.mqttFacade = new mqttFacade_1.MqttFacade({
+            mqttClient: _this.gatewayDevice,
+            g2cTopic: _this.g2cTopic,
+            shadowTopic: _this.shadowTopic,
+            gatewayId: _this.gatewayId,
+            bleFotaTopic: _this.fotaTopicPrefix,
+        });
         _this.watcherHolder = setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
@@ -221,6 +237,13 @@ var Gateway = /** @class */ (function (_super) {
         enumerable: false,
         configurable: true
     });
+    Object.defineProperty(Gateway.prototype, "topicPrefix", {
+        get: function () {
+            return this.stage + "/" + this.tenantId + "/" + this.gatewayId;
+        },
+        enumerable: false,
+        configurable: true
+    });
     Object.defineProperty(Gateway.prototype, "shadowGetTopic", {
         get: function () {
             return this.shadowTopic + "/get";
@@ -237,7 +260,21 @@ var Gateway = /** @class */ (function (_super) {
     });
     Object.defineProperty(Gateway.prototype, "shadowTopic", {
         get: function () {
-            return this.stage + "/" + this.tenantId + "/" + this.gatewayId + "/shadow";
+            return this.topicPrefix + "/shadow";
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(Gateway.prototype, "fotaTopicPrefix", {
+        get: function () {
+            return this.topicPrefix + "/jobs/ble";
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(Gateway.prototype, "bleFotaRcvTopic", {
+        get: function () {
+            return this.fotaTopicPrefix + "/rcv";
         },
         enumerable: false,
         configurable: true
@@ -249,6 +286,10 @@ var Gateway = /** @class */ (function (_super) {
         }
         if (topic.startsWith(this.shadowTopic)) {
             this.handleShadowMessage(message);
+        }
+        if (topic === this.bleFotaRcvTopic) {
+            console.info('got ble fota message', message);
+            this.handleFotaMessage(message);
         }
     };
     //The cloud is telling us to perform a task (operation)
@@ -347,6 +388,78 @@ var Gateway = /** @class */ (function (_super) {
     //Beacons are just a flat list of ids
     Gateway.prototype.handleBeaconState = function (beacons) {
         this.watchList = beacons;
+    };
+    Gateway.prototype.handleFotaMessage = function (message) {
+        var _this = this;
+        if (this.fotaAdapter === null) { //we don't have anything to use to handle fota, so ignore
+            return;
+        }
+        var deviceId = message[0], jobId = message[1], jobStatus = message[2], downloadSize = message[3], host = message[4], path = message[5];
+        if (typeof this.fotaMap[deviceId] === 'undefined') {
+            this.fotaMap[deviceId] = {};
+        }
+        if (typeof this.fotaMap[deviceId][jobId] === 'undefined') {
+            this.fotaMap[deviceId][jobId] = "https://" + host + "/" + path;
+            setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
+                var response, blob, reader, contentLength, receivedLength, chunks, _a, done, value, percentage;
+                var _this = this;
+                var _b;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
+                        case 0: return [4 /*yield*/, cross_fetch_1.default(this.fotaMap[deviceId][jobId])];
+                        case 1:
+                            response = _c.sent();
+                            if (!response.ok) {
+                                //TODO: Handle this
+                                return [2 /*return*/];
+                            }
+                            if (!(typeof ((_b = response.body) === null || _b === void 0 ? void 0 : _b.getReader) === 'function')) return [3 /*break*/, 5];
+                            reader = response.body.getReader();
+                            contentLength = +response.headers.get('Content-Length');
+                            receivedLength = 0;
+                            chunks = [];
+                            _c.label = 2;
+                        case 2:
+                            if (!true) return [3 /*break*/, 4];
+                            return [4 /*yield*/, reader.read()];
+                        case 3:
+                            _a = _c.sent(), done = _a.done, value = _a.value;
+                            if (done) {
+                                return [3 /*break*/, 4];
+                            }
+                            chunks.push(value);
+                            receivedLength += value.length;
+                            percentage = Math.round(receivedLength / contentLength * 100);
+                            this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Downloading, percentage]);
+                            return [3 /*break*/, 2];
+                        case 4:
+                            blob = new Blob(chunks);
+                            return [3 /*break*/, 7];
+                        case 5: return [4 /*yield*/, response.blob()];
+                        case 6:
+                            //Can't do incremental download, just get the blob
+                            blob = _c.sent();
+                            _c.label = 7;
+                        case 7:
+                            this.fotaAdapter.startUpdate(blob, deviceId, function (update) {
+                                if (update.error) {
+                                    _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Failed, update.message]);
+                                    return;
+                                }
+                                switch (update.status) {
+                                    case fotaAdapter_1.UpdateStatus.DfuAborted:
+                                        _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Failed, update.message]);
+                                        break;
+                                    case fotaAdapter_1.UpdateStatus.DfuCompleted:
+                                        _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Succeeded]);
+                                        break;
+                                }
+                            });
+                            return [2 /*return*/];
+                    }
+                });
+            }); }, 0);
+        }
     };
     //On a timer, we should report the RSSIs of the devices
     //The way to report about the devices is to send a "scan result" message with the updated information

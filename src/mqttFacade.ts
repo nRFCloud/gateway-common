@@ -19,19 +19,31 @@ enum FotaType {
 	Modem = 'MODEM',
 }
 
+export interface MqttFacadeOptions {
+	mqttClient: awsIot.device;
+	g2cTopic: string;
+	shadowTopic: string;
+	gatewayId: string;
+	bleFotaTopic: string;
+}
+
+
 export class MqttFacade {
 	private readonly mqttClient: awsIot.device;
 	private readonly g2cTopic: string;
 	private readonly shadowTopic: string;
 	private readonly gatewayId: string;
+	private readonly bleFotaTopic: string;
 
 	private messageId = 0;
 
-	constructor(mqttClient: awsIot.device, g2cTopic: string, shadowTopic: string, gatewayId: string) {
+	constructor(options: MqttFacadeOptions) {
+		const { g2cTopic, gatewayId, mqttClient, shadowTopic, bleFotaTopic } = options;
 		this.g2cTopic = g2cTopic;
 		this.mqttClient = mqttClient;
 		this.shadowTopic = shadowTopic;
 		this.gatewayId = gatewayId;
+		this.bleFotaTopic = bleFotaTopic;
 	}
 
 	handleScanResult(result: ScanResult, timeout: boolean = false) {
@@ -55,7 +67,7 @@ export class MqttFacade {
 		this.publish(`${this.shadowTopic}/update`, shadowUpdate);
 	}
 
-	reportBLEFOTAStatus(status: boolean) {
+	reportBLEFOTAAvailability(status: boolean) {
 		const fotaV2 = status ? [FotaType.App, FotaType.Modem, FotaType.Boot] : null;
 
 		const shadowUpdate = {
@@ -70,6 +82,10 @@ export class MqttFacade {
 			},
 		};
 		this.publish(`${this.shadowTopic}/update`, shadowUpdate);
+	}
+
+	reportBLEFOTAStatus(data: (string | number)[]): void {
+		this.publish(`${this.bleFotaTopic}/update`, data);
 	}
 
 	reportConnectionUp(deviceId: string) {
@@ -166,6 +182,10 @@ export class MqttFacade {
 			device: this.buildDeviceObjectForEvent(deviceId, true),
 		};
 		this.publishG2CEvent(event);
+	}
+
+	requestJobsForDevice(deviceId: string) {
+		this.publish(`${this.bleFotaTopic}/req`, [deviceId]);
 	}
 
 	private publishG2CEvent(event: G2CEvent) {

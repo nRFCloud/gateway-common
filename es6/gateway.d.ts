@@ -3,6 +3,7 @@ import * as awsIot from 'aws-iot-device-sdk';
 import { EventEmitter } from 'events';
 import { BluetoothAdapter } from './bluetoothAdapter';
 import { MqttFacade } from './mqttFacade';
+import { FotaAdapter } from './fotaAdapter';
 export declare enum GatewayEvent {
     NameChanged = "NAME_CHANGED",
     Deleted = "GATEWAY_DELETED",
@@ -21,6 +22,7 @@ export declare type GatewayConfiguration = {
     stage?: string;
     tenantId: string;
     bluetoothAdapter: BluetoothAdapter;
+    fotaAdapter?: FotaAdapter;
     protocol?: 'mqtts' | 'wss';
     accessKeyId?: string;
     secretKey?: string;
@@ -28,7 +30,6 @@ export declare type GatewayConfiguration = {
     debug?: boolean;
     watchInterval?: number;
     watchDuration?: number;
-    supportsBLEFOTA?: boolean;
 };
 export interface GatewayState {
     scanning: boolean;
@@ -47,7 +48,7 @@ export declare class Gateway extends EventEmitter {
     readonly mqttFacade: MqttFacade;
     readonly watchInterval: number;
     readonly watchDuration: number;
-    readonly supportsBLEFOTA: boolean;
+    readonly fotaAdapter: FotaAdapter;
     private deviceConnections;
     private deviceConnectionIntervalHolder;
     private lastTriedAddress;
@@ -55,20 +56,25 @@ export declare class Gateway extends EventEmitter {
     private discoveryCache;
     private watchList;
     private watcherHolder;
+    private fotaMap;
     private state;
     get c2gTopic(): string;
     get g2cTopic(): string;
     get beacons(): string[];
     get connections(): DeviceConnections;
     get name(): string;
+    private get topicPrefix();
     private get shadowGetTopic();
     private get shadowUpdateTopic();
     private get shadowTopic();
+    private get fotaTopicPrefix();
+    private get bleFotaRcvTopic();
     constructor(config: GatewayConfiguration);
     private handleMessage;
     private handleC2GMessage;
     private handleShadowMessage;
     private handleBeaconState;
+    private handleFotaMessage;
     private performRSSIs;
     private performWatches;
     private handleError;
