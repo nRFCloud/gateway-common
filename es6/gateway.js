@@ -42,6 +42,7 @@ export class Gateway extends EventEmitter {
         this.bluetoothAdapter.on(AdapterEvent.DeviceConnected, (deviceId) => {
             this.deviceConnections[deviceId] = true;
             this.reportConnectionUp(deviceId);
+            this.doDiscover(deviceId, true);
         });
         this.bluetoothAdapter.on(AdapterEvent.DeviceDisconnected, (deviceId) => {
             if (typeof this.deviceConnections[deviceId] !== 'undefined') {
@@ -276,8 +277,8 @@ export class Gateway extends EventEmitter {
         console.error('Error from MQTT', error);
     }
     //Do a "discover" operation on a device, this will do a standard bluetooth discover AS WELL AS grabs the current value for each characteristic and descriptor
-    async doDiscover(deviceAddress) {
-        if (typeof this.discoveryCache[deviceAddress] === 'undefined') {
+    async doDiscover(deviceAddress, forceNew = false) {
+        if (forceNew || typeof this.discoveryCache[deviceAddress] === 'undefined') {
             this.discoveryCache[deviceAddress] = await this.bluetoothAdapter.discover(deviceAddress);
         }
         this.mqttFacade.reportDiscover(deviceAddress, this.discoveryCache[deviceAddress]);

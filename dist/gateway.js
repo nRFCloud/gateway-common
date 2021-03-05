@@ -129,6 +129,7 @@ var Gateway = /** @class */ (function (_super) {
         _this.bluetoothAdapter.on(bluetoothAdapter_1.AdapterEvent.DeviceConnected, function (deviceId) {
             _this.deviceConnections[deviceId] = true;
             _this.reportConnectionUp(deviceId);
+            _this.doDiscover(deviceId, true);
         });
         _this.bluetoothAdapter.on(bluetoothAdapter_1.AdapterEvent.DeviceDisconnected, function (deviceId) {
             if (typeof _this.deviceConnections[deviceId] !== 'undefined') {
@@ -428,13 +429,14 @@ var Gateway = /** @class */ (function (_super) {
         console.error('Error from MQTT', error);
     };
     //Do a "discover" operation on a device, this will do a standard bluetooth discover AS WELL AS grabs the current value for each characteristic and descriptor
-    Gateway.prototype.doDiscover = function (deviceAddress) {
+    Gateway.prototype.doDiscover = function (deviceAddress, forceNew) {
+        if (forceNew === void 0) { forceNew = false; }
         return __awaiter(this, void 0, void 0, function () {
             var _a, _b;
             return __generator(this, function (_c) {
                 switch (_c.label) {
                     case 0:
-                        if (!(typeof this.discoveryCache[deviceAddress] === 'undefined')) return [3 /*break*/, 2];
+                        if (!(forceNew || typeof this.discoveryCache[deviceAddress] === 'undefined')) return [3 /*break*/, 2];
                         _a = this.discoveryCache;
                         _b = deviceAddress;
                         return [4 /*yield*/, this.bluetoothAdapter.discover(deviceAddress)];
