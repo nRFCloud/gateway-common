@@ -176,6 +176,7 @@ export class Gateway extends EventEmitter {
 		this.bluetoothAdapter.on(AdapterEvent.DeviceConnected, (deviceId) => {
 			this.deviceConnections[deviceId] = true;
 			this.reportConnectionUp(deviceId);
+			this.doDiscover(deviceId, true);
 			this.mqttFacade.requestJobsForDevice(deviceId); //Since this device just connected, we want to know if there are any outstanding FOTA jobs
 		});
 
@@ -490,8 +491,8 @@ export class Gateway extends EventEmitter {
 	}
 
 	//Do a "discover" operation on a device, this will do a standard bluetooth discover AS WELL AS grabs the current value for each characteristic and descriptor
-	private async doDiscover(deviceAddress: string) {
-		if (typeof this.discoveryCache[deviceAddress] === 'undefined') {
+	private async doDiscover(deviceAddress: string, forceNew: boolean = false) {
+		if (forceNew || typeof this.discoveryCache[deviceAddress] === 'undefined') {
 			this.discoveryCache[deviceAddress] = await this.bluetoothAdapter.discover(deviceAddress);
 		}
 
