@@ -12,13 +12,6 @@ import {
 	G2CEvent,
 } from './interfaces/g2c';
 
-
-enum FotaType {
-	App = 'APP',
-	Boot = 'BOOT',
-	Modem = 'MODEM',
-}
-
 export interface MqttFacadeOptions {
 	mqttClient: awsIot.device;
 	g2cTopic: string;
@@ -68,14 +61,14 @@ export class MqttFacade {
 	}
 
 	reportBLEFOTAAvailability(status: boolean) {
-		const fotaV2 = status ? [FotaType.App, FotaType.Modem, FotaType.Boot] : null;
+		const isAvailable = status ? status : null;
 
 		const shadowUpdate = {
 			state: {
 				reported: {
 					device: {
 						serviceInfo: {
-							fota_v2: fotaV2,
+							fota_v2_ble: isAvailable,
 						},
 					},
 				},

@@ -1,10 +1,4 @@
 import { EventType, } from './interfaces/g2c';
-var FotaType;
-(function (FotaType) {
-    FotaType["App"] = "APP";
-    FotaType["Boot"] = "BOOT";
-    FotaType["Modem"] = "MODEM";
-})(FotaType || (FotaType = {}));
 export class MqttFacade {
     constructor(options) {
         this.messageId = 0;
@@ -35,13 +29,13 @@ export class MqttFacade {
         this.publish(`${this.shadowTopic}/update`, shadowUpdate);
     }
     reportBLEFOTAAvailability(status) {
-        const fotaV2 = status ? [FotaType.App, FotaType.Modem, FotaType.Boot] : null;
+        const isAvailable = status ? status : null;
         const shadowUpdate = {
             state: {
                 reported: {
                     device: {
                         serviceInfo: {
-                            fota_v2: fotaV2,
+                            fota_v2_ble: isAvailable,
                         },
                     },
                 },

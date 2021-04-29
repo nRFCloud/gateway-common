@@ -2,12 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MqttFacade = void 0;
 var g2c_1 = require("./interfaces/g2c");
-var FotaType;
-(function (FotaType) {
-    FotaType["App"] = "APP";
-    FotaType["Boot"] = "BOOT";
-    FotaType["Modem"] = "MODEM";
-})(FotaType || (FotaType = {}));
 var MqttFacade = /** @class */ (function () {
     function MqttFacade(options) {
         this.messageId = 0;
@@ -39,13 +33,13 @@ var MqttFacade = /** @class */ (function () {
         this.publish(this.shadowTopic + "/update", shadowUpdate);
     };
     MqttFacade.prototype.reportBLEFOTAAvailability = function (status) {
-        var fotaV2 = status ? [FotaType.App, FotaType.Modem, FotaType.Boot] : null;
+        var isAvailable = status ? status : null;
         var shadowUpdate = {
             state: {
                 reported: {
                     device: {
                         serviceInfo: {
-                            fota_v2: fotaV2,
+                            fota_v2_ble: isAvailable,
                         },
                     },
                 },
