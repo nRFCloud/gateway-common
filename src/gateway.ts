@@ -2,7 +2,7 @@ import * as awsIot from 'aws-iot-device-sdk';
 import { EventEmitter } from 'events';
 import isEqual from 'lodash/isEqual';
 import { isBeacon } from 'beacon-utilities';
-import fetch from 'cross-fetch';
+import JSZip from 'jszip';
 
 import { AdapterEvent, BluetoothAdapter } from './bluetoothAdapter';
 import { MqttFacade } from './mqttFacade';
@@ -18,7 +18,7 @@ import {
 	ScanOperation,
 	ScanType,
 } from './interfaces/c2g';
-import { assumeType } from './utils';
+import { assumeType, downloadFile } from './utils';
 import { FotaAdapter, UpdateStatus } from './fotaAdapter';
 import { ScanResult, JobExecutionStatus } from './interfaces/interfaces';
 
@@ -108,7 +108,7 @@ export class Gateway extends EventEmitter {
 	private watchList: string[] = [];
 	private watcherHolder;
 
-	private fotaMap: { [key: string]: { [key: string]: string } } = {};
+	private fotaMap: { [key: string]: { [key: string]: string[] | boolean } } = {};
 
 
 	private state: GatewayState;
@@ -378,52 +378,63 @@ export class Gateway extends EventEmitter {
 		}
 
 		const [deviceId, jobId, jobStatus, downloadSize, host, path] = message;
+		const files = path.split(' ');
 		if (typeof this.fotaMap[deviceId] === 'undefined') {
 			this.fotaMap[deviceId] = {};
 		}
 		if (typeof this.fotaMap[deviceId][jobId] === 'undefined') {
-			this.fotaMap[deviceId][jobId] = `https://${host}/${path}`;
+			this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.InProgress, '']);
+			this.fotaMap[deviceId][jobId] = files.map((file) => `https://${host}/${file}`);
 			setTimeout(async () => { //pull out of sync code into next tick
-				const response = await fetch(this.fotaMap[deviceId][jobId]);
-				if (!response.ok) {
-					//TODO: Handle this
-					return;
-				}
-				let blob: Blob;
-				if (typeof response.body?.getReader === 'function') {
-					const reader = response.body.getReader();
-					const contentLength = +response.headers.get('Content-Length');
-					let receivedLength = 0;
-					const chunks = [];
-
-					while (true) {
-						const { done, value } = await reader.read();
-						if (done) {
-							break;
-						}
-						chunks.push(value);
-						receivedLength += value.length;
-						//report download progress
-						const percentage = Math.round(receivedLength / contentLength * 100);
+				const fileData = await Promise.all((this.fotaMap[deviceId][jobId] as string[]).map((fileUrl) => {
+					return downloadFile(fileUrl, (percentage) => {
 						this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Downloading, percentage]);
-					}
+					});
+				}));
 
-					blob = new Blob(chunks);
-				} else {
-					//Can't do incremental download, just get the blob
-					blob = await response.blob();
+				const zip = new JSZip();
+				const application = {
+					bin_file: '',
+					dat_file: '',
+				};
+
+				for (let x = 0; x < fileData.length; ++x) {
+					const path = this.fotaMap[deviceId][jobId][x];
+
+					const fileName = path.substring(path.lastIndexOf('/') + 1);
+					zip.file(fileName, fileData[x]);
+					if (fileName.indexOf('.bin') > -1) {
+
+						application.bin_file = fileName;
+					} else {
+						application.dat_file = fileName;
+					}
 				}
+
+				const manifest = {
+					manifest: {
+						application,
+					},
+				};
+
+				zip.file('manifest.json', JSON.stringify(manifest));
+				const blob = await zip.generateAsync({ type: 'blob' });
+				this.fotaMap[deviceId][jobId] = true;
 				this.fotaAdapter.startUpdate(blob, deviceId, (update) => {
 					if (update.error) {
 						this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Failed, update.message]);
 						return;
 					}
 					switch (update.status) {
+						case UpdateStatus.ProgressChanged:
+							this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Downloading, update.progress?.percent]);
+							break;
 						case UpdateStatus.DfuAborted:
 							this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Failed, update.message]);
 							break;
 						case UpdateStatus.DfuCompleted:
-							this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Succeeded]);
+							delete this.fotaMap[deviceId][jobId];
+							this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, JobExecutionStatus.Succeeded, '']);
 							break;
 					}
 				});
@@ -688,8 +699,10 @@ export class Gateway extends EventEmitter {
 		}
 
 		try {
-			this.updateState({ isTryingConnection: true });
-			await this.bluetoothAdapter.connect(nextAddressToTry);
+			if (!this.fotaMap[nextAddressToTry] || Object.keys(this.fotaMap[nextAddressToTry]).length < 1) { //If we're currently doing fota, skip this one
+				this.updateState({ isTryingConnection: true });
+				await this.bluetoothAdapter.connect(nextAddressToTry);
+			}
 		} catch (error) {
 		} finally {
 			this.lastTriedAddress = nextAddressToTry;

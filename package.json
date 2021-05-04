@@ -12,7 +12,9 @@
 	},
 	"dependencies": {
 		"@babel/runtime": "^7.9.2",
+		"@types/jszip": "^3.4.1",
 		"core-js": "^3.6.5",
+		"jszip": "^3.6.0",
 		"regenerator-runtime": "^0.13.7"
 	},
 	"devDependencies": {

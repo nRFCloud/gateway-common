@@ -11,6 +11,7 @@ export enum UpdateStatus {
 	DeviceDisconnected = 'deviceDisconnected',
 	DfuCompleted = 'dfuCompleted',
 	DfuAborted = 'dfuAborted',
+	ProgressChanged = 'progressChanged',
 }
 
 //This interface is based on the values from cordova-plugin-nordic-update. We can change these if we feel we need to in the future. The implementation would have to do a conversion
@@ -32,5 +33,6 @@ export interface UpdateInformation {
 export abstract class FotaAdapter {
 
 	//Given a file blob, the implementation should initiate the update. The update status will be sent using the callback. At the very least, the implementation needs to call the callback with a "DfuCompleted" status
+	//The blob will be a zip file containing the information and files from the update message
 	abstract startUpdate(file: Blob, deviceId: string, callback: (status: UpdateInformation) => void): void;
 }

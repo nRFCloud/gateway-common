@@ -87,7 +87,7 @@ var awsIot = __importStar(require("aws-iot-device-sdk"));
 var events_1 = require("events");
 var isEqual_1 = __importDefault(require("lodash/isEqual"));
 var beacon_utilities_1 = require("beacon-utilities");
-var cross_fetch_1 = __importDefault(require("cross-fetch"));
+var jszip_1 = __importDefault(require("jszip"));
 var bluetoothAdapter_1 = require("./bluetoothAdapter");
 var mqttFacade_1 = require("./mqttFacade");
 var bluetooth_1 = require("./interfaces/bluetooth");
@@ -396,63 +396,67 @@ var Gateway = /** @class */ (function (_super) {
             return;
         }
         var deviceId = message[0], jobId = message[1], jobStatus = message[2], downloadSize = message[3], host = message[4], path = message[5];
+        var files = path.split(' ');
         if (typeof this.fotaMap[deviceId] === 'undefined') {
             this.fotaMap[deviceId] = {};
         }
         if (typeof this.fotaMap[deviceId][jobId] === 'undefined') {
-            this.fotaMap[deviceId][jobId] = "https://" + host + "/" + path;
+            this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.InProgress, '']);
+            this.fotaMap[deviceId][jobId] = files.map(function (file) { return "https://" + host + "/" + file; });
             setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
-                var response, blob, reader, contentLength, receivedLength, chunks, _a, done, value, percentage;
+                var fileData, zip, application, x, path_1, fileName, manifest, blob;
                 var _this = this;
-                var _b;
-                return __generator(this, function (_c) {
-                    switch (_c.label) {
-                        case 0: return [4 /*yield*/, cross_fetch_1.default(this.fotaMap[deviceId][jobId])];
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, Promise.all(this.fotaMap[deviceId][jobId].map(function (fileUrl) {
+                                return utils_1.downloadFile(fileUrl, function (percentage) {
+                                    _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Downloading, percentage]);
+                                });
+                            }))];
                         case 1:
-                            response = _c.sent();
-                            if (!response.ok) {
-                                //TODO: Handle this
-                                return [2 /*return*/];
+                            fileData = _a.sent();
+                            zip = new jszip_1.default();
+                            application = {
+                                bin_file: '',
+                                dat_file: '',
+                            };
+                            for (x = 0; x < fileData.length; ++x) {
+                                path_1 = this.fotaMap[deviceId][jobId][x];
+                                fileName = path_1.substring(path_1.lastIndexOf('/') + 1);
+                                zip.file(fileName, fileData[x]);
+                                if (fileName.indexOf('.bin') > -1) {
+                                    application.bin_file = fileName;
+                                }
+                                else {
+                                    application.dat_file = fileName;
+                                }
                             }
-                            if (!(typeof ((_b = response.body) === null || _b === void 0 ? void 0 : _b.getReader) === 'function')) return [3 /*break*/, 5];
-                            reader = response.body.getReader();
-                            contentLength = +response.headers.get('Content-Length');
-                            receivedLength = 0;
-                            chunks = [];
-                            _c.label = 2;
+                            manifest = {
+                                manifest: {
+                                    application: application,
+                                },
+                            };
+                            zip.file('manifest.json', JSON.stringify(manifest));
+                            return [4 /*yield*/, zip.generateAsync({ type: 'blob' })];
                         case 2:
-                            if (!true) return [3 /*break*/, 4];
-                            return [4 /*yield*/, reader.read()];
-                        case 3:
-                            _a = _c.sent(), done = _a.done, value = _a.value;
-                            if (done) {
-                                return [3 /*break*/, 4];
-                            }
-                            chunks.push(value);
-                            receivedLength += value.length;
-                            percentage = Math.round(receivedLength / contentLength * 100);
-                            this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Downloading, percentage]);
-                            return [3 /*break*/, 2];
-                        case 4:
-                            blob = new Blob(chunks);
-                            return [3 /*break*/, 7];
-                        case 5: return [4 /*yield*/, response.blob()];
-                        case 6:
-                            //Can't do incremental download, just get the blob
-                            blob = _c.sent();
-                            _c.label = 7;
-                        case 7:
+                            blob = _a.sent();
+                            this.fotaMap[deviceId][jobId] = true;
                             this.fotaAdapter.startUpdate(blob, deviceId, function (update) {
+                                var _a;
                                 if (update.error) {
                                     _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Failed, update.message]);
                                     return;
                                 }
                                 switch (update.status) {
+                                    case fotaAdapter_1.UpdateStatus.ProgressChanged:
+                                        _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Downloading, (_a = update.progress) === null || _a === void 0 ? void 0 : _a.percent]);
+                                        break;
                                     case fotaAdapter_1.UpdateStatus.DfuAborted:
                                         _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Failed, update.message]);
                                         break;
                                     case fotaAdapter_1.UpdateStatus.DfuCompleted:
-                                        _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Succeeded]);
+                                        delete _this.fotaMap[deviceId][jobId];
+                                        _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Succeeded, '']);
                                         break;
                                 }
                             });
@@ -822,20 +826,22 @@ var Gateway = /** @class */ (function (_super) {
                         }
                         _a.label = 1;
                     case 1:
-                        _a.trys.push([1, 3, 4, 5]);
+                        _a.trys.push([1, 4, 5, 6]);
+                        if (!(!this.fotaMap[nextAddressToTry] || Object.keys(this.fotaMap[nextAddressToTry]).length < 1)) return [3 /*break*/, 3];
                         this.updateState({ isTryingConnection: true });
                         return [4 /*yield*/, this.bluetoothAdapter.connect(nextAddressToTry)];
                     case 2:
                         _a.sent();
-                        return [3 /*break*/, 5];
-                    case 3:
-                        error_2 = _a.sent();
-                        return [3 /*break*/, 5];
+                        _a.label = 3;
+                    case 3: return [3 /*break*/, 6];
                     case 4:
+                        error_2 = _a.sent();
+                        return [3 /*break*/, 6];
+                    case 5:
                         this.lastTriedAddress = nextAddressToTry;
                         this.updateState({ isTryingConnection: false });
                         return [7 /*endfinally*/];
-                    case 5: return [2 /*return*/];
+                    case 6: return [2 /*return*/];
                 }
             });
         });
