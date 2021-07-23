@@ -87,7 +87,6 @@ var awsIot = __importStar(require("aws-iot-device-sdk"));
 var events_1 = require("events");
 var isEqual_1 = __importDefault(require("lodash/isEqual"));
 var beacon_utilities_1 = require("beacon-utilities");
-var jszip_1 = __importDefault(require("jszip"));
 var bluetoothAdapter_1 = require("./bluetoothAdapter");
 var mqttFacade_1 = require("./mqttFacade");
 var bluetooth_1 = require("./interfaces/bluetooth");
@@ -95,6 +94,7 @@ var c2g_1 = require("./interfaces/c2g");
 var utils_1 = require("./utils");
 var fotaAdapter_1 = require("./fotaAdapter");
 var interfaces_1 = require("./interfaces/interfaces");
+var fotaQueue_1 = require("./fotaQueue");
 var CLIENT_CHARACTERISTIC_CONFIGURATION = '2902';
 var GatewayEvent;
 (function (GatewayEvent) {
@@ -112,6 +112,7 @@ var Gateway = /** @class */ (function (_super) {
         var _a, _b, _c, _d, _e;
         var _this = _super.call(this) || this;
         _this.fotaAdapter = null;
+        _this.fotaQueue = fotaQueue_1.FotaQ;
         _this.deviceConnections = {};
         _this.deviceConnectionIntervalHolder = null;
         _this.lastTriedAddress = null;
@@ -182,6 +183,10 @@ var Gateway = /** @class */ (function (_super) {
         _this.gatewayDevice.subscribe(_this.shadowUpdateTopic);
         if (_this.fotaAdapter !== null) {
             _this.gatewayDevice.subscribe(_this.bleFotaRcvTopic);
+            _this.fotaQueue.setFotaAdapter(_this.fotaAdapter);
+            _this.fotaQueue.on(fotaQueue_1.FotaEvent.DfuStatus, function (item, update) { return _this.dfuStatusListener(item, update); });
+            _this.fotaQueue.on(fotaQueue_1.FotaEvent.DownloadProgress, function (item, percentage) { return _this.dfuDownloadListener(item, percentage); });
+            _this.fotaQueue.on(fotaQueue_1.FotaEvent.ErrorUpdating, function (item, update) { return _this.dfuErrorListener(item, update); });
         }
         _this.mqttFacade = new mqttFacade_1.MqttFacade({
             mqttClient: _this.gatewayDevice,
@@ -391,80 +396,17 @@ var Gateway = /** @class */ (function (_super) {
         this.watchList = beacons;
     };
     Gateway.prototype.handleFotaMessage = function (message) {
-        var _this = this;
         if (this.fotaAdapter === null) { //we don't have anything to use to handle fota, so ignore
             return;
         }
         var deviceId = message[0], jobId = message[1], jobStatus = message[2], downloadSize = message[3], host = message[4], path = message[5];
         var files = path.split(' ');
-        if (typeof this.fotaMap[deviceId] === 'undefined') {
-            this.fotaMap[deviceId] = {};
-        }
-        if (typeof this.fotaMap[deviceId][jobId] === 'undefined') {
-            this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.InProgress, '']);
-            this.fotaMap[deviceId][jobId] = files.map(function (file) { return "https://" + host + "/" + file; });
-            setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
-                var fileData, zip, application, x, path_1, fileName, manifest, blob;
-                var _this = this;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0: return [4 /*yield*/, Promise.all(this.fotaMap[deviceId][jobId].map(function (fileUrl) {
-                                return utils_1.downloadFile(fileUrl, function (percentage) {
-                                    _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Downloading, percentage]);
-                                });
-                            }))];
-                        case 1:
-                            fileData = _a.sent();
-                            zip = new jszip_1.default();
-                            application = {
-                                bin_file: '',
-                                dat_file: '',
-                            };
-                            for (x = 0; x < fileData.length; ++x) {
-                                path_1 = this.fotaMap[deviceId][jobId][x];
-                                fileName = path_1.substring(path_1.lastIndexOf('/') + 1);
-                                zip.file(fileName, fileData[x]);
-                                if (fileName.indexOf('.bin') > -1) {
-                                    application.bin_file = fileName;
-                                }
-                                else {
-                                    application.dat_file = fileName;
-                                }
-                            }
-                            manifest = {
-                                manifest: {
-                                    application: application,
-                                },
-                            };
-                            zip.file('manifest.json', JSON.stringify(manifest));
-                            return [4 /*yield*/, zip.generateAsync({ type: 'blob' })];
-                        case 2:
-                            blob = _a.sent();
-                            this.fotaMap[deviceId][jobId] = true;
-                            this.fotaAdapter.startUpdate(blob, deviceId, function (update) {
-                                var _a;
-                                if (update.error) {
-                                    _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Failed, update.message]);
-                                    return;
-                                }
-                                switch (update.status) {
-                                    case fotaAdapter_1.UpdateStatus.ProgressChanged:
-                                        _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Downloading, (_a = update.progress) === null || _a === void 0 ? void 0 : _a.percent]);
-                                        break;
-                                    case fotaAdapter_1.UpdateStatus.DfuAborted:
-                                        _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Failed, update.message]);
-                                        break;
-                                    case fotaAdapter_1.UpdateStatus.DfuCompleted:
-                                        delete _this.fotaMap[deviceId][jobId];
-                                        _this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Succeeded, '']);
-                                        break;
-                                }
-                            });
-                            return [2 /*return*/];
-                    }
-                });
-            }); }, 0);
-        }
+        var updateObj = {
+            deviceId: deviceId,
+            jobId: jobId,
+            uris: files.map(function (file) { return "https://" + host + "/" + file; }),
+        };
+        this.fotaQueue.add(updateObj);
     };
     //On a timer, we should report the RSSIs of the devices
     //The way to report about the devices is to send a "scan result" message with the updated information
@@ -799,11 +741,12 @@ var Gateway = /** @class */ (function (_super) {
     //Try to initiate the next connection on the list
     //Will go through the list one at a time to connect (so it won't be stuck trying to connect to only the first one in the list)
     Gateway.prototype.initiateNextConnection = function () {
+        var _a;
         return __awaiter(this, void 0, void 0, function () {
             var connections, nextAddressToTry, indexOf, error_2;
             var _this = this;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
                         if (this.state.isTryingConnection) {
                             return [2 /*return*/];
@@ -824,18 +767,18 @@ var Gateway = /** @class */ (function (_super) {
                                 nextAddressToTry = connections[indexOf + 1];
                             }
                         }
-                        _a.label = 1;
+                        _b.label = 1;
                     case 1:
-                        _a.trys.push([1, 4, 5, 6]);
-                        if (!(!this.fotaMap[nextAddressToTry] || Object.keys(this.fotaMap[nextAddressToTry]).length < 1)) return [3 /*break*/, 3];
+                        _b.trys.push([1, 4, 5, 6]);
+                        if (!(((_a = this.fotaQueue.currentItem) === null || _a === void 0 ? void 0 : _a.deviceId) !== nextAddressToTry)) return [3 /*break*/, 3];
                         this.updateState({ isTryingConnection: true });
                         return [4 /*yield*/, this.bluetoothAdapter.connect(nextAddressToTry)];
                     case 2:
-                        _a.sent();
-                        _a.label = 3;
+                        _b.sent();
+                        _b.label = 3;
                     case 3: return [3 /*break*/, 6];
                     case 4:
-                        error_2 = _a.sent();
+                        error_2 = _b.sent();
                         return [3 /*break*/, 6];
                     case 5:
                         this.lastTriedAddress = nextAddressToTry;
@@ -862,6 +805,27 @@ var Gateway = /** @class */ (function (_super) {
     Gateway.prototype.updateState = function (newState) {
         this.state = Object.assign({}, this.state, newState);
         this.emit(GatewayEvent.StatusChanged, this.state);
+    };
+    Gateway.prototype.dfuErrorListener = function (item, update) {
+        this.mqttFacade.reportBLEFOTAStatus([item.deviceId, item.jobId, interfaces_1.JobExecutionStatus.Failed, update.message]);
+    };
+    Gateway.prototype.dfuDownloadListener = function (item, percentage) {
+        this.mqttFacade.reportBLEFOTAStatus([item.deviceId, item.jobId, interfaces_1.JobExecutionStatus.Downloading, percentage]);
+    };
+    Gateway.prototype.dfuStatusListener = function (item, update) {
+        var _a;
+        var deviceId = item.deviceId, jobId = item.jobId;
+        switch (update.status) {
+            case fotaAdapter_1.UpdateStatus.ProgressChanged:
+                this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.InProgress, (_a = update.progress) === null || _a === void 0 ? void 0 : _a.percent]);
+                break;
+            case fotaAdapter_1.UpdateStatus.DfuAborted:
+                this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Failed, update.message]);
+                break;
+            case fotaAdapter_1.UpdateStatus.DfuCompleted:
+                this.mqttFacade.reportBLEFOTAStatus([deviceId, jobId, interfaces_1.JobExecutionStatus.Succeeded, '']);
+                break;
+        }
     };
     return Gateway;
 }(events_1.EventEmitter));

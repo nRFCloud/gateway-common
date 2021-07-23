@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import { BluetoothAdapter } from './bluetoothAdapter';
 import { MqttFacade } from './mqttFacade';
 import { FotaAdapter } from './fotaAdapter';
+import { FotaQueue } from './fotaQueue';
 export declare enum GatewayEvent {
     NameChanged = "NAME_CHANGED",
     Deleted = "GATEWAY_DELETED",
@@ -49,6 +50,7 @@ export declare class Gateway extends EventEmitter {
     readonly watchInterval: number;
     readonly watchDuration: number;
     readonly fotaAdapter: FotaAdapter;
+    readonly fotaQueue: FotaQueue;
     private deviceConnections;
     private deviceConnectionIntervalHolder;
     private lastTriedAddress;
@@ -94,4 +96,7 @@ export declare class Gateway extends EventEmitter {
     private reportConnectionUp;
     private reportConnectionDown;
     private updateState;
+    private dfuErrorListener;
+    private dfuDownloadListener;
+    private dfuStatusListener;
 }
