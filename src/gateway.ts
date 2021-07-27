@@ -266,7 +266,7 @@ export class Gateway extends EventEmitter {
 		}
 
 		if (topic === this.bleFotaRcvTopic) {
-			console.info('got ble fota message', message);
+			console.log('got ble fota message', message);
 			this.handleFotaMessage(message);
 		}
 	}
