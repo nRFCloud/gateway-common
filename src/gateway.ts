@@ -385,6 +385,10 @@ export class Gateway extends EventEmitter {
 		}
 
 		const [deviceId, jobId, jobStatus, downloadSize, host, path] = message;
+		if (!this.isDeviceConnected(deviceId)) {
+			return; //we can ignore it, the device isn't connected now, when the device connects, we'll grab all jobs for it
+		}
+
 		const files = path.split(' ');
 		const updateObj: QueueItem = {
 			deviceId,
@@ -665,6 +669,10 @@ export class Gateway extends EventEmitter {
 	public stopDeviceConnections() {
 		clearInterval(this.deviceConnectionIntervalHolder);
 		this.deviceConnectionIntervalHolder = null;
+	}
+
+	public isDeviceConnected(deviceId: string): boolean {
+		return !!this.connections[deviceId];
 	}
 
 	//Whenever a device is connected or dissconnected, we need to report it with two messages

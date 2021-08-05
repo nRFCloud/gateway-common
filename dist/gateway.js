@@ -294,7 +294,7 @@ var Gateway = /** @class */ (function (_super) {
             this.handleShadowMessage(message);
         }
         if (topic === this.bleFotaRcvTopic) {
-            console.info('got ble fota message', message);
+            console.log('got ble fota message', message);
             this.handleFotaMessage(message);
         }
     };
@@ -400,6 +400,9 @@ var Gateway = /** @class */ (function (_super) {
             return;
         }
         var deviceId = message[0], jobId = message[1], jobStatus = message[2], downloadSize = message[3], host = message[4], path = message[5];
+        if (!this.isDeviceConnected(deviceId)) {
+            return; //we can ignore it, the device isn't connected now, when the device connects, we'll grab all jobs for it
+        }
         var files = path.split(' ');
         var updateObj = {
             deviceId: deviceId,
@@ -792,6 +795,9 @@ var Gateway = /** @class */ (function (_super) {
     Gateway.prototype.stopDeviceConnections = function () {
         clearInterval(this.deviceConnectionIntervalHolder);
         this.deviceConnectionIntervalHolder = null;
+    };
+    Gateway.prototype.isDeviceConnected = function (deviceId) {
+        return !!this.connections[deviceId];
     };
     //Whenever a device is connected or dissconnected, we need to report it with two messages
     Gateway.prototype.reportConnectionUp = function (deviceId) {

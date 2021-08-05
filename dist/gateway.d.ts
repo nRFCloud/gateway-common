@@ -93,6 +93,7 @@ export declare class Gateway extends EventEmitter {
     private startDeviceConnections;
     private initiateNextConnection;
     stopDeviceConnections(): void;
+    isDeviceConnected(deviceId: string): boolean;
     private reportConnectionUp;
     private reportConnectionDown;
     private updateState;
